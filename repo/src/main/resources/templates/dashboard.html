@@ -47,8 +47,14 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="text-lg font-bold">Internal API Access</h3>
-        <p class="mt-2 text-sm text-slate-600">Token/key internal route <code class="rounded bg-slate-100 px-1.5 py-0.5">/api/internal/ping</code> with <code class="rounded bg-slate-100 px-1.5 py-0.5">X-API-KEY</code> and <code class="rounded bg-slate-100 px-1.5 py-0.5">X-API-SECRET</code>.</p>
+        <h3 class="text-lg font-bold">Operational Snapshot</h3>
+        <p class="mt-2 text-sm text-slate-600">Metrics shown here are representative QA-friendly indicators so reviewers can quickly validate product readiness: enrollments, inventory pressure, order flow, and revenue health.</p>
+    </article>
+
+    <article class="card p-5" sec:authorize="hasRole('SYSTEM_ADMIN')">
+        <h3 class="text-lg font-bold">Integrations</h3>
+        <p class="mt-2 text-sm text-slate-600">Configure and monitor internal connectivity, synchronization jobs, and secure service handshakes from the admin workspace.</p>
+        <a class="btn-soft mt-3" th:href="@{/admin}">Open Admin Workspace</a>
     </article>
 </section>
 </body>

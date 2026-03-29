@@ -29,7 +29,7 @@ public class HomeController {
 
     @GetMapping("/dashboard")
     public String dashboard(Authentication authentication, Model model) {
-        model.addAttribute("username", authentication.getName());
+        model.addAttribute("username", authentication == null ? "guest" : authentication.getName());
         model.addAttribute("recommendations", recommenderService.recommendationsForCurrentUser(5));
         return "dashboard";
     }

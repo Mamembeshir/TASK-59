@@ -32,7 +32,7 @@
   function initQuickSearch() {
     var modal = byId('quickSearchModal');
     var input = byId('quickSearchInput');
-    var btn = byId('quickSearchBtn');
+    var openButtons = Array.from(document.querySelectorAll('[data-quick-search-open]'));
     var results = byId('quickSearchResults');
     if (!modal || !input || !results) {
       return;
@@ -61,14 +61,20 @@
       modal.classList.add('hidden');
     }
 
-    if (btn) {
+    openButtons.forEach(function (btn) {
       btn.addEventListener('click', open);
-    }
+    });
 
     document.addEventListener('keydown', function (e) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         open();
+      }
+      if (e.key === 'Enter' && document.activeElement === input) {
+        var first = results.querySelector('a[href]');
+        if (first) {
+          window.location.href = first.getAttribute('href');
+        }
       }
       if (e.key === 'Escape') {
         close();

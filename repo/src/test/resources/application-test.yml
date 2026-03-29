@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:instituteops-test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: false
+  thymeleaf:
+    cache: false
+
+app:
+  upload:
+    base-path: /tmp/instituteops-test-uploads
+  encryption:
+    aes-key-base64: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=

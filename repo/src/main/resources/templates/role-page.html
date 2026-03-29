@@ -7,8 +7,14 @@
         <h2 class="text-2xl font-extrabold tracking-tight">Role Protected Area</h2>
         <p class="mt-2 text-sm text-slate-600">Access is enforced by least-privilege RBAC. This workspace is visible only to permitted roles.</p>
         <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Current Authorities</p>
-            <p class="mt-2 text-sm font-semibold text-brand-700" sec:authentication="authorities">[ROLE]</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Current Access Level</p>
+            <p class="mt-2 text-sm font-semibold text-brand-700" sec:authorize="hasRole('SYSTEM_ADMIN')">System Administrator</p>
+            <p class="mt-2 text-sm font-semibold text-brand-700" sec:authorize="hasRole('REGISTRAR_FINANCE_CLERK')">Registrar & Finance Clerk</p>
+            <p class="mt-2 text-sm font-semibold text-brand-700" sec:authorize="hasRole('INSTRUCTOR')">Instructor</p>
+            <p class="mt-2 text-sm font-semibold text-brand-700" sec:authorize="hasRole('INVENTORY_MANAGER')">Inventory Manager</p>
+            <p class="mt-2 text-sm font-semibold text-brand-700" sec:authorize="hasRole('PROCUREMENT_APPROVER')">Procurement Approver</p>
+            <p class="mt-2 text-sm font-semibold text-brand-700" sec:authorize="hasRole('STORE_MANAGER')">Store Manager</p>
+            <p class="mt-2 text-sm font-semibold text-brand-700" sec:authorize="hasRole('STUDENT')">Student</p>
         </div>
     </article>
 </section>

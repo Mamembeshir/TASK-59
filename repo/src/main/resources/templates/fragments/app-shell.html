@@ -42,14 +42,20 @@
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg>
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-slate-500">SaaS Console</p>
+                    <p class="text-sm font-semibold text-slate-500">Operations Cloud</p>
                     <h1 class="text-lg font-extrabold tracking-tight">InstituteOps</h1>
                 </div>
             </div>
             <div class="space-y-4 p-4">
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Role Badge</p>
-                    <p class="mt-1 inline-flex rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700" sec:authentication="authorities">[ROLE]</p>
+                    <p class="mt-1 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700" sec:authorize="hasRole('SYSTEM_ADMIN')">System Administrator</p>
+                    <p class="mt-1 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700" sec:authorize="hasRole('REGISTRAR_FINANCE_CLERK')">Registrar & Finance Clerk</p>
+                    <p class="mt-1 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700" sec:authorize="hasRole('INSTRUCTOR')">Instructor</p>
+                    <p class="mt-1 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700" sec:authorize="hasRole('INVENTORY_MANAGER')">Inventory Manager</p>
+                    <p class="mt-1 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700" sec:authorize="hasRole('PROCUREMENT_APPROVER')">Procurement Approver</p>
+                    <p class="mt-1 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700" sec:authorize="hasRole('STORE_MANAGER')">Store Manager</p>
+                    <p class="mt-1 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700" sec:authorize="hasRole('STUDENT')">Student</p>
                 </div>
 
                 <nav class="space-y-1 text-sm">
@@ -64,7 +70,11 @@
                     <a class="menu-link" sec:authorize="hasAnyRole('SYSTEM_ADMIN','REGISTRAR_FINANCE_CLERK','INSTRUCTOR','STUDENT')" th:href="@{/student}">Student Area</a>
                     <a class="menu-link" sec:authorize="hasRole('SYSTEM_ADMIN')" th:href="@{/admin/recommender}">Recommender Admin</a>
                 </nav>
-                <p class="px-2 text-xs text-slate-500">Quick Search <kbd class="rounded bg-slate-100 px-1.5 py-0.5 font-mono">Ctrl+K</kbd></p>
+                <button type="button" data-quick-search-open class="btn-soft w-full justify-between md:hidden">
+                    Quick Search
+                    <kbd class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">Ctrl+K</kbd>
+                </button>
+                <p class="px-2 text-xs text-slate-500">Keyboard shortcut: <kbd class="rounded bg-slate-100 px-1.5 py-0.5 font-mono">Ctrl+K</kbd></p>
             </div>
         </aside>
 
@@ -78,10 +88,13 @@
                         <h2 class="text-lg font-bold" th:text="${pageTitle}">Workspace</h2>
                     </div>
                     <div class="flex items-center gap-3">
-                        <button type="button" id="quickSearchBtn" class="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 md:inline-flex">
+                        <button type="button" data-quick-search-open class="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 md:inline-flex">
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
                             Search
                             <kbd class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">Ctrl+K</kbd>
+                        </button>
+                        <button type="button" data-quick-search-open class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 md:hidden" aria-label="Open quick search">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
                         </button>
                         <button class="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 20a2 2 0 1 1-4 0"/><path d="M18 16V11a6 6 0 1 0-12 0v5l-2 2h16z"/></svg>
@@ -89,7 +102,13 @@
                         </button>
                         <div class="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm md:block">
                             <p class="font-semibold" sec:authentication="name">user</p>
-                            <p class="text-xs text-slate-500" sec:authentication="authorities">[ROLE]</p>
+                            <p class="text-xs text-slate-500" sec:authorize="hasRole('SYSTEM_ADMIN')">System Administrator</p>
+                            <p class="text-xs text-slate-500" sec:authorize="hasRole('REGISTRAR_FINANCE_CLERK')">Registrar & Finance Clerk</p>
+                            <p class="text-xs text-slate-500" sec:authorize="hasRole('INSTRUCTOR')">Instructor</p>
+                            <p class="text-xs text-slate-500" sec:authorize="hasRole('INVENTORY_MANAGER')">Inventory Manager</p>
+                            <p class="text-xs text-slate-500" sec:authorize="hasRole('PROCUREMENT_APPROVER')">Procurement Approver</p>
+                            <p class="text-xs text-slate-500" sec:authorize="hasRole('STORE_MANAGER')">Store Manager</p>
+                            <p class="text-xs text-slate-500" sec:authorize="hasRole('STUDENT')">Student</p>
                         </div>
                         <form method="post" th:action="@{/logout}">
                             <button class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-slate-700" type="submit">
