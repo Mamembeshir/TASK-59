@@ -1,0 +1,112 @@
+package com.instituteops.grades.domain;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+@Controller
+@Validated
+@RequestMapping
+public class GradeEntryController {
+
+    private final GradeEntryService gradeEntryService;
+
+    public GradeEntryController(GradeEntryService gradeEntryService) {
+        this.gradeEntryService = gradeEntryService;
+    }
+
+    @GetMapping("/instructor/grades")
+    public String gradeLedgerPage(Model model) {
+        model.addAttribute("entries", gradeEntryService.latestLedger());
+        return "grade-entry";
+    }
+
+    @PostMapping("/instructor/grades")
+    public String appendEntry(@ModelAttribute @Valid GradeFormRequest form) {
+        gradeEntryService.appendLedgerEntry(toRequest(form));
+        return "redirect:/instructor/grades";
+    }
+
+    @ResponseBody
+    @PostMapping("/api/grades/preview")
+    public GradeEntryService.GradeImpact preview(@RequestBody @Valid GradeApiRequest apiRequest) {
+        return gradeEntryService.preview(toRequest(apiRequest));
+    }
+
+    @ResponseBody
+    @PostMapping("/api/grades/ledger")
+    public ResponseEntity<GradeEntryService.GradeImpact> appendFromApi(@RequestBody @Valid GradeApiRequest apiRequest) {
+        gradeEntryService.appendLedgerEntry(toRequest(apiRequest));
+        return ResponseEntity.ok(gradeEntryService.preview(toRequest(apiRequest)));
+    }
+
+    private static GradeEntryService.GradeEntryRequest toRequest(GradeFormRequest form) {
+        return new GradeEntryService.GradeEntryRequest(
+            form.studentId(),
+            form.classId(),
+            form.classSessionId(),
+            form.enrollmentId(),
+            form.assessmentKey(),
+            form.rawScore(),
+            form.maxScore(),
+            form.operationType(),
+            form.reasonCode(),
+            form.previousEntryId()
+        );
+    }
+
+    private static GradeEntryService.GradeEntryRequest toRequest(GradeApiRequest api) {
+        return new GradeEntryService.GradeEntryRequest(
+            api.studentId(),
+            api.classId(),
+            api.classSessionId(),
+            api.enrollmentId(),
+            api.assessmentKey(),
+            api.rawScore(),
+            api.maxScore(),
+            api.operationType(),
+            api.reasonCode(),
+            api.previousEntryId()
+        );
+    }
+
+    public record GradeFormRequest(
+        @NotNull Long studentId,
+        @NotNull Long classId,
+        Long classSessionId,
+        Long enrollmentId,
+        @NotBlank String assessmentKey,
+        @NotNull @DecimalMin("0.0") BigDecimal rawScore,
+        @NotNull @DecimalMin("0.001") BigDecimal maxScore,
+        String operationType,
+        String reasonCode,
+        Long previousEntryId
+    ) {
+    }
+
+    public record GradeApiRequest(
+        @NotNull Long studentId,
+        @NotNull Long classId,
+        Long classSessionId,
+        Long enrollmentId,
+        @NotBlank String assessmentKey,
+        @NotNull @DecimalMin("0.0") BigDecimal rawScore,
+        @NotNull @DecimalMin("0.001") BigDecimal maxScore,
+        String operationType,
+        String reasonCode,
+        Long previousEntryId
+    ) {
+    }
+}

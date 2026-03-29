@@ -84,6 +84,11 @@ public class SecurityConfig {
                     RoleCode.INSTRUCTOR.name(),
                     RoleCode.STUDENT.name()
                 )
+                .requestMatchers("/api/grades/**").hasAnyRole(
+                    RoleCode.SYSTEM_ADMIN.name(),
+                    RoleCode.INSTRUCTOR.name(),
+                    RoleCode.REGISTRAR_FINANCE_CLERK.name()
+                )
                 .requestMatchers("/dashboard").authenticated()
                 .anyRequest().denyAll()
             )

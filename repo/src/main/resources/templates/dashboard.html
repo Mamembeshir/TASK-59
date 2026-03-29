@@ -19,7 +19,7 @@
     <nav class="grid-links">
         <a sec:authorize="hasRole('SYSTEM_ADMIN')" th:href="@{/admin}">System Administrator</a>
         <a sec:authorize="hasAnyRole('SYSTEM_ADMIN','REGISTRAR_FINANCE_CLERK')" th:href="@{/registrar}">Registrar / Finance</a>
-        <a sec:authorize="hasAnyRole('SYSTEM_ADMIN','INSTRUCTOR')" th:href="@{/instructor}">Instructor</a>
+        <a sec:authorize="hasAnyRole('SYSTEM_ADMIN','INSTRUCTOR')" th:href="@{/instructor/grades}">Instructor Grades</a>
         <a sec:authorize="hasAnyRole('SYSTEM_ADMIN','INVENTORY_MANAGER')" th:href="@{/inventory}">Inventory Manager</a>
         <a sec:authorize="hasAnyRole('SYSTEM_ADMIN','PROCUREMENT_APPROVER')" th:href="@{/procurement}">Procurement Approver</a>
         <a sec:authorize="hasAnyRole('SYSTEM_ADMIN','STORE_MANAGER')" th:href="@{/store}">Store Manager</a>
