@@ -41,11 +41,6 @@ public class HomeController {
         return "role-page";
     }
 
-    @GetMapping("/procurement")
-    public String procurement() {
-        return "role-page";
-    }
-
     @ResponseBody
     @RequestMapping("/api/internal/ping")
     public String internalPing() {
