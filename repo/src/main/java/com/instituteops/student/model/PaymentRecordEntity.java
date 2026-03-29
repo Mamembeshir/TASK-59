@@ -47,6 +47,12 @@ public class PaymentRecordEntity {
     @Column(name = "note")
     private String note;
 
+    @Column(name = "voided", nullable = false)
+    private boolean voided;
+
+    @Column(name = "void_reason")
+    private String voidReason;
+
     public Long getId() {
         return id;
     }
@@ -121,5 +127,21 @@ public class PaymentRecordEntity {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public boolean isVoided() {
+        return voided;
+    }
+
+    public void setVoided(boolean voided) {
+        this.voided = voided;
+    }
+
+    public String getVoidReason() {
+        return voidReason;
+    }
+
+    public void setVoidReason(String voidReason) {
+        this.voidReason = voidReason;
     }
 }

@@ -25,13 +25,16 @@ public class InternalApiClientAuthFilter extends OncePerRequestFilter {
 
     private final InternalApiClientRepository internalApiClientRepository;
     private final PasswordEncoder passwordEncoder;
+    private final InternalSyncPolicyService internalSyncPolicyService;
 
     public InternalApiClientAuthFilter(
         InternalApiClientRepository internalApiClientRepository,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        InternalSyncPolicyService internalSyncPolicyService
     ) {
         this.internalApiClientRepository = internalApiClientRepository;
         this.passwordEncoder = passwordEncoder;
+        this.internalSyncPolicyService = internalSyncPolicyService;
     }
 
     @Override
@@ -46,6 +49,16 @@ public class InternalApiClientAuthFilter extends OncePerRequestFilter {
         HttpServletResponse response,
         FilterChain filterChain
     ) throws ServletException, IOException {
+        InternalSyncPolicyService.InternalSyncPolicy policy = internalSyncPolicyService.currentPolicy();
+        if (!policy.enabled()) {
+            response.sendError(HttpStatus.FORBIDDEN.value(), "Internal sync API is disabled");
+            return;
+        }
+        if (policy.lanOnly() && !internalSyncPolicyService.isTrustedLanAddress(request.getRemoteAddr())) {
+            response.sendError(HttpStatus.FORBIDDEN.value(), "Internal sync API is restricted to trusted LAN addresses");
+            return;
+        }
+
         String key = request.getHeader(API_KEY_HEADER);
         String secret = request.getHeader(API_SECRET_HEADER);
 

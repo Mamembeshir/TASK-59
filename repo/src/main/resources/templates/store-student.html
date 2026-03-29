@@ -2,9 +2,12 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/app-shell :: head('Student Group-Buy')}"></head>
 <body th:replace="~{fragments/app-shell :: shell('Student Group-Buy Store', ~{::section})}">
-<section class="space-y-6">
+<section class="page-stack">
+    <p class="status alert-success" th:if="${successMessage}" th:text="${successMessage}"></p>
+    <p class="status alert-error" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Recommended For You</h3>
+        <h3 class="section-title">Recommended For You</h3>
         <div class="overflow-x-auto">
             <table class="data-table">
                 <thead><tr><th>Rank</th><th>Item</th><th>Type</th><th>Score</th></tr></thead>
@@ -21,7 +24,7 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Active Campaigns</h3>
+        <h3 class="section-title">Active Campaigns</h3>
         <div class="grid gap-4 xl:grid-cols-2">
             <article class="card p-4" th:each="c : ${vm.campaigns}">
                 <h4 class="text-base font-semibold" th:text="${c.campaign.title}">Campaign</h4>
@@ -61,7 +64,7 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">My Orders</h3>
+        <h3 class="section-title">My Orders</h3>
         <div class="overflow-x-auto">
             <table class="data-table">
                 <thead><tr><th>Order</th><th>Campaign</th><th>Group</th><th>Qty</th><th>Total</th><th>Status</th><th>Void Reason</th></tr></thead>

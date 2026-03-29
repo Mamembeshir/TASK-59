@@ -62,6 +62,9 @@ public class StudentProfileEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "deleted_by")
+    private Long deletedBy;
+
     public Long getId() {
         return id;
     }
@@ -168,5 +171,13 @@ public class StudentProfileEntity {
 
     public void setDeletedAt(LocalDateTime deletedAt) {
         this.deletedAt = deletedAt;
+    }
+
+    public Long getDeletedBy() {
+        return deletedBy;
+    }
+
+    public void setDeletedBy(Long deletedBy) {
+        this.deletedBy = deletedBy;
     }
 }

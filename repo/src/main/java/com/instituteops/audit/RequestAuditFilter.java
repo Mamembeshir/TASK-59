@@ -92,6 +92,9 @@ public class RequestAuditFilter extends OncePerRequestFilter {
         if (path.startsWith("/student") || path.startsWith("/api/students")) {
             return "STUDENT";
         }
+        if (path.startsWith("/api/governance/students/")) {
+            return "STUDENT";
+        }
         if (path.startsWith("/inventory")) {
             return "INVENTORY";
         }
@@ -105,6 +108,16 @@ public class RequestAuditFilter extends OncePerRequestFilter {
     }
 
     private static Long inferEntityId(String path) {
+        if (path.startsWith("/api/governance/students/")) {
+            String[] segments = path.split("/");
+            if (segments.length >= 5) {
+                try {
+                    return Long.parseLong(segments[4]);
+                } catch (NumberFormatException ignored) {
+                    return null;
+                }
+            }
+        }
         String[] segments = path.split("/");
         if (segments.length == 0) {
             return null;

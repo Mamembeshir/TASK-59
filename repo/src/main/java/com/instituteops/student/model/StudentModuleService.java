@@ -1,5 +1,6 @@
 package com.instituteops.student.model;
 
+import com.instituteops.governance.domain.GovernanceAuditService;
 import com.instituteops.security.UserIdentityService;
 import com.instituteops.security.repo.UserRepository;
 import jakarta.transaction.Transactional;
@@ -22,9 +23,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,6 +44,7 @@ public class StudentModuleService {
     private static final long MAX_FILE_SIZE = 10L * 1024L * 1024L;
 
     private final StudentProfileRepository studentProfileRepository;
+    private final StudentProfileLookupRepository studentProfileLookupRepository;
     private final EnrollmentRecordRepository enrollmentRecordRepository;
     private final PaymentRecordRepository paymentRecordRepository;
     private final StudentAttendanceRepository studentAttendanceRepository;
@@ -49,10 +54,13 @@ public class StudentModuleService {
     private final ClassSessionRefRepository classSessionRefRepository;
     private final UserRepository userRepository;
     private final UserIdentityService userIdentityService;
+    private final GovernanceAuditService governanceAuditService;
+    private final JdbcTemplate jdbcTemplate;
     private final Path uploadRoot;
 
     public StudentModuleService(
         StudentProfileRepository studentProfileRepository,
+        StudentProfileLookupRepository studentProfileLookupRepository,
         EnrollmentRecordRepository enrollmentRecordRepository,
         PaymentRecordRepository paymentRecordRepository,
         StudentAttendanceRepository studentAttendanceRepository,
@@ -62,9 +70,12 @@ public class StudentModuleService {
         ClassSessionRefRepository classSessionRefRepository,
         UserRepository userRepository,
         UserIdentityService userIdentityService,
+        GovernanceAuditService governanceAuditService,
+        JdbcTemplate jdbcTemplate,
         @Value("${app.upload.base-path}") String uploadBasePath
     ) {
         this.studentProfileRepository = studentProfileRepository;
+        this.studentProfileLookupRepository = studentProfileLookupRepository;
         this.enrollmentRecordRepository = enrollmentRecordRepository;
         this.paymentRecordRepository = paymentRecordRepository;
         this.studentAttendanceRepository = studentAttendanceRepository;
@@ -74,6 +85,8 @@ public class StudentModuleService {
         this.classSessionRefRepository = classSessionRefRepository;
         this.userRepository = userRepository;
         this.userIdentityService = userIdentityService;
+        this.governanceAuditService = governanceAuditService;
+        this.jdbcTemplate = jdbcTemplate;
         this.uploadRoot = Path.of(uploadBasePath).toAbsolutePath().normalize();
     }
 
@@ -92,7 +105,9 @@ public class StudentModuleService {
         entity.setEmergencyContact(request.emergencyContact());
         entity.setMaskedEmail(maskEmail(request.contactEmail()));
         entity.setMaskedPhone(maskPhone(request.contactPhone()));
-        return studentProfileRepository.save(entity);
+        StudentProfileEntity saved = studentProfileRepository.save(entity);
+        governanceAuditService.recordChange("STUDENT", saved.getId(), "CREATE", null, studentSnapshot(saved), "MANUAL_CREATE");
+        return saved;
     }
 
     public List<StudentProfileEntity> searchStudents(String query) {
@@ -102,6 +117,22 @@ public class StudentModuleService {
         return studentProfileRepository.findByDeletedAtIsNullAndFirstNameContainingIgnoreCaseOrDeletedAtIsNullAndLastNameContainingIgnoreCase(query, query);
     }
 
+    public List<StudentProfileEntity> searchStudentsForPrincipal(Authentication authentication, String query) {
+        if (!isStudentPrincipal(authentication)) {
+            return searchStudents(query);
+        }
+        StudentProfileEntity mine = resolveStudentForPrincipal(authentication);
+        if (!StringUtils.hasText(query)) {
+            return List.of(mine);
+        }
+        String q = query.trim().toLowerCase(Locale.ROOT);
+        String fullName = (mine.getFirstName() + " " + mine.getLastName()).toLowerCase(Locale.ROOT);
+        if (mine.getStudentNo().toLowerCase(Locale.ROOT).contains(q) || fullName.contains(q)) {
+            return List.of(mine);
+        }
+        return List.of();
+    }
+
     @Transactional
     public StudentProfileEntity updateStatus(Long studentId, String newStatus) {
         String normalized = normalizeUpper(newStatus);
@@ -109,27 +140,45 @@ public class StudentModuleService {
             throw new IllegalArgumentException("Unsupported student status");
         }
         StudentProfileEntity student = findActiveStudent(studentId);
+        String oldStatus = student.getStatus();
         student.setStatus(normalized);
-        return studentProfileRepository.save(student);
+        StudentProfileEntity saved = studentProfileRepository.save(student);
+        governanceAuditService.recordChange(
+            "STUDENT",
+            saved.getId(),
+            "UPDATE",
+            Map.of("status", oldStatus),
+            Map.of("status", saved.getStatus()),
+            "STATUS_UPDATE"
+        );
+        return saved;
     }
 
     @Transactional
     public void softDeleteStudent(Long studentId) {
         StudentProfileEntity student = findActiveStudent(studentId);
+        Map<String, Object> before = studentSnapshot(student);
         student.setDeletedAt(LocalDateTime.now());
+        student.setDeletedBy(currentUserId());
         student.setStatus("INACTIVE");
         studentProfileRepository.save(student);
+        governanceAuditService.recordRecycle("STUDENT", student.getId(), studentSnapshot(student));
+        governanceAuditService.recordChange("STUDENT", student.getId(), "SOFT_DELETE", before, studentSnapshot(student), "SOFT_DELETE");
     }
 
     @Transactional
     public void restoreStudent(Long studentId) {
         StudentProfileEntity student = studentProfileRepository.findById(studentId)
             .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        Map<String, Object> before = studentSnapshot(student);
         student.setDeletedAt(null);
+        student.setDeletedBy(null);
         if (!"GRADUATED".equals(student.getStatus())) {
             student.setStatus("ACTIVE");
         }
         studentProfileRepository.save(student);
+        governanceAuditService.markRestored("STUDENT", student.getId());
+        governanceAuditService.recordChange("STUDENT", student.getId(), "RESTORE", before, studentSnapshot(student), "RESTORE");
     }
 
     @Transactional
@@ -258,6 +307,10 @@ public class StudentModuleService {
         List<EnrollmentRecordEntity> enrollments = enrollmentRecordRepository.findByStudentIdAndDeletedAtIsNullOrderByEnrolledAtDesc(studentId);
         List<PaymentRecordEntity> payments = paymentRecordRepository.findByStudentIdOrderByRecordedAtDesc(studentId);
         List<InstructorCommentRecordEntity> comments = instructorCommentRecordRepository.findByStudentIdOrderByCreatedAtDesc(studentId);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (isStudentPrincipal(authentication)) {
+            comments = comments.stream().filter(comment -> "STUDENT_VISIBLE".equals(comment.getVisibility())).toList();
+        }
         List<HomeworkAttachmentRecordEntity> attachments = homeworkAttachmentRecordRepository.findByStudentIdOrderByUploadedAtDesc(studentId);
 
         Map<Long, CourseClassRefEntity> classMap = new HashMap<>();
@@ -331,6 +384,62 @@ public class StudentModuleService {
             .anyMatch(role -> "ROLE_SYSTEM_ADMIN".equals(role) || "ROLE_REGISTRAR_FINANCE_CLERK".equals(role));
     }
 
+    public void assertCanAccessStudent(Authentication authentication, Long studentId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException("Authentication required");
+        }
+        if (hasAnyRole(authentication, "ROLE_SYSTEM_ADMIN", "ROLE_REGISTRAR_FINANCE_CLERK")) {
+            return;
+        }
+
+        if (isStudentPrincipal(authentication)) {
+            StudentProfileEntity mine = resolveStudentForPrincipal(authentication);
+            if (!mine.getId().equals(studentId)) {
+                throw new AccessDeniedException("Cross-student access denied");
+            }
+            return;
+        }
+
+        if (hasAnyRole(authentication, "ROLE_INSTRUCTOR")) {
+            Long instructorUserId = userRepository.findIdByUsername(authentication.getName())
+                .orElseThrow(() -> new AccessDeniedException("Instructor account is not linked to an active user"));
+            if (instructorCanAccessStudent(instructorUserId, studentId)) {
+                return;
+            }
+            throw new AccessDeniedException("Instructor can only access students in assigned classes");
+        }
+
+        throw new AccessDeniedException("Role is not permitted to access student records");
+    }
+
+    public void assertCanMutateStudentRecord(Authentication authentication, Long studentId) {
+        assertCanAccessStudent(authentication, studentId);
+        if (isStudentPrincipal(authentication)) {
+            throw new AccessDeniedException("Students cannot modify authoritative student records");
+        }
+    }
+
+    public void assertCanUploadHomework(Authentication authentication, Long studentId) {
+        assertCanAccessStudent(authentication, studentId);
+    }
+
+    public void assertCanCreateStudent(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException("Authentication required");
+        }
+        if (isStudentPrincipal(authentication)) {
+            throw new AccessDeniedException("Students cannot create student profiles");
+        }
+    }
+
+    public boolean canMutateStudentRecord(Authentication authentication) {
+        return authentication != null && authentication.isAuthenticated() && !isStudentPrincipal(authentication);
+    }
+
+    public Long currentPrincipalStudentId(Authentication authentication) {
+        return resolveStudentForPrincipal(authentication).getId();
+    }
+
     private StudentProfileEntity findActiveStudent(Long studentId) {
         StudentProfileEntity student = studentProfileRepository.findById(studentId)
             .orElseThrow(() -> new IllegalArgumentException("Student not found"));
@@ -342,6 +451,67 @@ public class StudentModuleService {
 
     private Long currentUserId() {
         return userIdentityService.resolveCurrentUserId().orElseGet(() -> userRepository.findIdByUsername("sysadmin").orElse(1L));
+    }
+
+    private StudentProfileEntity resolveStudentForPrincipal(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException("Authentication required");
+        }
+        if (!StringUtils.hasText(authentication.getName())) {
+            throw new AccessDeniedException("No principal username is available");
+        }
+        return studentProfileLookupRepository.findByStudentNoIgnoreCaseAndDeletedAtIsNull(authentication.getName())
+            .orElseThrow(() -> new AccessDeniedException("No student profile is bound to principal " + authentication.getName()));
+    }
+
+    private static boolean isStudentPrincipal(Authentication authentication) {
+        if (authentication == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).anyMatch("ROLE_STUDENT"::equals);
+    }
+
+    private static boolean hasAnyRole(Authentication authentication, String... roles) {
+        if (authentication == null) {
+            return false;
+        }
+        Set<String> granted = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(java.util.stream.Collectors.toSet());
+        for (String role : roles) {
+            if (granted.contains(role)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean instructorCanAccessStudent(Long instructorUserId, Long studentId) {
+        Integer count = jdbcTemplate.queryForObject(
+            """
+                SELECT COUNT(*)
+                FROM enrollments e
+                JOIN classes c ON c.id = e.class_id
+                WHERE e.student_id = ?
+                  AND e.deleted_at IS NULL
+                  AND e.enrollment_status IN ('ENROLLED', 'WAITLISTED', 'COMPLETED')
+                  AND c.instructor_user_id = ?
+            """,
+            Integer.class,
+            studentId,
+            instructorUserId
+        );
+        return count != null && count > 0;
+    }
+
+    private static Map<String, Object> studentSnapshot(StudentProfileEntity student) {
+        return Map.of(
+            "id", student.getId(),
+            "studentNo", student.getStudentNo(),
+            "firstName", student.getFirstName(),
+            "lastName", student.getLastName(),
+            "status", student.getStatus(),
+            "deletedAt", student.getDeletedAt() == null ? "" : student.getDeletedAt().toString(),
+            "deletedBy", student.getDeletedBy() == null ? "" : student.getDeletedBy()
+        );
     }
 
     private static String maskEmail(String email) {

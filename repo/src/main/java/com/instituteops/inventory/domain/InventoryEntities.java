@@ -663,6 +663,9 @@ class SystemAlertEntity {
     @Column(name = "message", nullable = false)
     private String message;
 
+    @Column(name = "acknowledged", nullable = false)
+    private boolean acknowledged;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -684,6 +687,14 @@ class SystemAlertEntity {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public boolean isAcknowledged() {
+        return acknowledged;
+    }
+
+    public void setAcknowledged(boolean acknowledged) {
+        this.acknowledged = acknowledged;
     }
 
     public void setCreatedAt(LocalDateTime createdAt) {

@@ -8,6 +8,8 @@ import java.util.Base64;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,7 +18,11 @@ public class AesGcmStringEncryptor {
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH_BITS = 128;
     private static final int IV_LENGTH_BYTES = 12;
+    private static final int AES_128_KEY_BYTES = 16;
+    private static final int AES_192_KEY_BYTES = 24;
     private static final int AES_256_KEY_BYTES = 32;
+
+    private static final Logger log = LoggerFactory.getLogger(AesGcmStringEncryptor.class);
 
     private final byte[] key;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -25,10 +31,16 @@ public class AesGcmStringEncryptor {
         if (encryptionProperties.getAesKeyBase64() == null || encryptionProperties.getAesKeyBase64().isBlank()) {
             throw new IllegalStateException("Missing app.encryption.aes-key-base64 configuration");
         }
-        byte[] decoded = Base64.getDecoder().decode(encryptionProperties.getAesKeyBase64());
-        if (decoded.length != AES_256_KEY_BYTES) {
-            throw new IllegalStateException("app.encryption.aes-key-base64 must decode to exactly 32 bytes for AES-256");
+        byte[] decoded;
+        try {
+            decoded = Base64.getDecoder().decode(encryptionProperties.getAesKeyBase64().trim());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException("app.encryption.aes-key-base64 must be valid Base64", ex);
         }
+        if (decoded.length != AES_128_KEY_BYTES && decoded.length != AES_192_KEY_BYTES && decoded.length != AES_256_KEY_BYTES) {
+            throw new IllegalStateException("app.encryption.aes-key-base64 must decode to 16, 24, or 32 bytes");
+        }
+        log.info("Initialized AES-GCM encryptor with {}-bit key", decoded.length * 8);
         this.key = decoded;
     }
 

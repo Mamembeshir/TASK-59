@@ -85,6 +85,9 @@ class SkuCatalogEntity {
     @Column(name = "specs", columnDefinition = "json")
     private String specs;
 
+    @Column(name = "inventory_item_ref")
+    private String inventoryItemRef;
+
     @Column(name = "purchase_limit_per_student", nullable = false)
     private Integer purchaseLimitPerStudent;
 
@@ -125,6 +128,14 @@ class SkuCatalogEntity {
 
     public void setSpecs(String specs) {
         this.specs = specs;
+    }
+
+    public String getInventoryItemRef() {
+        return inventoryItemRef;
+    }
+
+    public void setInventoryItemRef(String inventoryItemRef) {
+        this.inventoryItemRef = inventoryItemRef;
     }
 
     public Integer getPurchaseLimitPerStudent() {

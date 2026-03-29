@@ -13,6 +13,7 @@ interface StudentProfileRepository extends JpaRepository<StudentProfileEntity, L
         String firstName,
         String lastName
     );
+
 }
 
 interface EnrollmentRecordRepository extends JpaRepository<EnrollmentRecordEntity, Long> {

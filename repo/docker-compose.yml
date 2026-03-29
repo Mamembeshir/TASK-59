@@ -37,7 +37,7 @@ services:
       SPRING_DATASOURCE_USERNAME: instituteops
       SPRING_DATASOURCE_PASSWORD: instituteops
       APP_UPLOAD_BASE_PATH: /uploads
-      APP_ENCRYPTION_AES_KEY_BASE64: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+      APP_ENCRYPTION_AES_KEY_BASE64: aW5zdGl0dXRlb3BzLWRldi1kZWZhdWx0LWFlcy1rZXk=
     ports:
       - "8080:8080"
     volumes:

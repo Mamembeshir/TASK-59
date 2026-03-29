@@ -3,37 +3,16 @@
 <head th:fragment="head(title)">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
     <title th:text="${title}">InstituteOps</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif']
-                    },
-                    colors: {
-                        brand: {
-                            50: '#ecfdf5',
-                            100: '#d1fae5',
-                            500: '#10b981',
-                            600: '#059669',
-                            700: '#047857'
-                        }
-                    },
-                    boxShadow: {
-                        soft: '0 10px 35px rgba(15, 23, 42, 0.08)'
-                    }
-                }
-            }
-        };
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/css/saas-ui.css}" href="/css/saas-ui.css">
+    <link rel="stylesheet" th:href="@{/css/ui-tokens.css}" href="/css/ui-tokens.css">
+    <link rel="stylesheet" th:href="@{/css/ui-base.css}" href="/css/ui-base.css">
+    <link rel="stylesheet" th:href="@{/css/ui-components.css}" href="/css/ui-components.css">
+    <link rel="stylesheet" th:href="@{/css/ui-utilities.css}" href="/css/ui-utilities.css">
 </head>
 <body th:fragment="shell(pageTitle, content)">
+<a class="skip-link" href="#mainContent">Skip to main content</a>
 <div class="min-h-screen bg-slate-50 text-slate-800">
     <div class="flex min-h-screen">
         <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full border-r border-slate-200 bg-white/95 shadow-soft transition-transform duration-200 lg:static lg:translate-x-0">
@@ -60,8 +39,8 @@
 
                 <nav class="space-y-1 text-sm">
                     <a class="menu-link" th:href="@{/dashboard}">Dashboard</a>
-                    <a class="menu-link" sec:authorize="hasRole('SYSTEM_ADMIN')" th:href="@{/admin}">System Admin</a>
-                    <a class="menu-link" sec:authorize="hasAnyRole('SYSTEM_ADMIN','REGISTRAR_FINANCE_CLERK')" th:href="@{/registrar}">Registrar / Finance</a>
+                    <a class="menu-link" sec:authorize="hasRole('SYSTEM_ADMIN')" th:href="@{/governance}">System Admin</a>
+                    <a class="menu-link" sec:authorize="hasAnyRole('SYSTEM_ADMIN','REGISTRAR_FINANCE_CLERK')" th:href="@{/governance}">Registrar / Finance</a>
                     <a class="menu-link" sec:authorize="hasAnyRole('SYSTEM_ADMIN','INSTRUCTOR')" th:href="@{/instructor/grades}">Instructor Grades</a>
                     <a class="menu-link" sec:authorize="hasAnyRole('SYSTEM_ADMIN','INVENTORY_MANAGER')" th:href="@{/inventory}">Inventory</a>
                     <a class="menu-link" sec:authorize="hasAnyRole('SYSTEM_ADMIN','PROCUREMENT_APPROVER')" th:href="@{/procurement}">Procurement</a>
@@ -120,7 +99,7 @@
                 </div>
             </header>
 
-            <main class="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+            <main id="mainContent" class="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
                 <div th:replace="${content}"></div>
             </main>
         </div>

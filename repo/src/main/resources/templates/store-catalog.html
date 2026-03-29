@@ -2,9 +2,9 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/app-shell :: head('Store Catalog')}"></head>
 <body th:replace="~{fragments/app-shell :: shell('SPU/SKU Catalog', ~{::section})}">
-<section class="space-y-6">
+<section class="page-stack">
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Catalog Snapshot</h3>
+        <h3 class="section-title">Catalog Snapshot</h3>
         <div class="overflow-x-auto">
             <table class="data-table">
                 <thead><tr><th>SPU ID</th><th>Code</th><th>Name</th></tr></thead>

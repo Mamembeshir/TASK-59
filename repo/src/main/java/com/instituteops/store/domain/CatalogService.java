@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -304,7 +305,13 @@ public class CatalogService {
                     group.setStatus("FORMED");
                     group.setFormedAt(LocalDateTime.now());
                     groupBuyGroupRepository.save(group);
-                    lockGroupOrders(group.getId(), campaign.getSkuId());
+                    try {
+                        lockGroupOrders(group.getId(), campaign.getSkuId());
+                    } catch (IllegalStateException ex) {
+                        group.setStatus("FAILED");
+                        groupBuyGroupRepository.save(group);
+                        voidGroupOrders(group.getId(), ex.getMessage());
+                    }
                     continue;
                 }
                 if (LocalDateTime.now().isAfter(group.getExpiresAt()) || LocalDateTime.now().isAfter(campaign.getEndsAt())) {
@@ -315,26 +322,40 @@ public class CatalogService {
                 }
             }
             if ("FORMED".equals(group.getStatus()) && LocalDateTime.now().isAfter(campaign.getEndsAt())) {
-                group.setStatus("CLOSED");
+                group.setStatus("FAILED");
                 groupBuyGroupRepository.save(group);
+                voidGroupOrders(group.getId(), "Campaign ended before confirmation");
             }
         }
     }
 
     private void lockGroupOrders(Long groupId, Long skuId) {
-        for (GroupBuyOrderEntity order : groupBuyOrderRepository.findByGroupIdOrderByPlacedAtAsc(groupId)) {
+        List<GroupBuyOrderEntity> pendingOrders = groupBuyOrderRepository.findByGroupIdOrderByPlacedAtAsc(groupId).stream()
+            .filter(order -> "PENDING_GROUP".equals(order.getOrderStatus()))
+            .toList();
+        if (pendingOrders.isEmpty()) {
+            return;
+        }
+
+        IngredientStockConfig stockConfig = resolveIngredientStockConfig(skuId);
+        BigDecimal requiredQty = pendingOrders.stream()
+            .map(order -> BigDecimal.valueOf(order.getQuantity()))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal availableQty = jdbcTemplate.queryForObject(
+            "SELECT COALESCE(SUM(quantity_available), 0) FROM inventory_batches WHERE ingredient_id = ?",
+            BigDecimal.class,
+            stockConfig.ingredientId()
+        );
+        if (availableQty == null || availableQty.compareTo(requiredQty) < 0) {
+            throw new IllegalStateException("Insufficient stock to lock group orders");
+        }
+
+        for (GroupBuyOrderEntity order : pendingOrders) {
             if (!"PENDING_GROUP".equals(order.getOrderStatus())) {
                 continue;
             }
             if (!inventoryLockRepository.existsByGroupBuyOrderId(order.getId())) {
-                InventoryLockEntity lock = new InventoryLockEntity();
-                lock.setGroupBuyOrderId(order.getId());
-                lock.setSkuId(skuId);
-                lock.setLockedQty(BigDecimal.valueOf(order.getQuantity()));
-                lock.setLockStatus("LOCKED");
-                lock.setLockReason("GROUP_FORMED_INVENTORY_LOCK");
-                lock.setLockedAt(LocalDateTime.now());
-                inventoryLockRepository.save(lock);
+                reserveInventoryForOrder(order, skuId, stockConfig);
             }
             order.setOrderStatus("INVENTORY_LOCKED");
             groupBuyOrderRepository.save(order);
@@ -351,6 +372,9 @@ public class CatalogService {
             groupBuyOrderRepository.save(order);
 
             for (InventoryLockEntity lock : inventoryLockRepository.findByGroupBuyOrderId(order.getId())) {
+                if ("LOCKED".equals(lock.getLockStatus())) {
+                    releaseInventoryReservation(lock);
+                }
                 if (!"CONSUMED".equals(lock.getLockStatus())) {
                     lock.setLockStatus("RELEASED");
                     lock.setReleasedAt(LocalDateTime.now());
@@ -437,32 +461,121 @@ public class CatalogService {
         return committed == null ? 0 : committed;
     }
 
+    private IngredientStockConfig resolveIngredientStockConfig(Long skuId) {
+        SkuCatalogEntity sku = skuCatalogRepository.findById(skuId)
+            .orElseThrow(() -> new IllegalArgumentException("SKU not found"));
+        if (!StringUtils.hasText(sku.getInventoryItemRef())) {
+            throw new IllegalStateException("Insufficient stock to lock group orders");
+        }
+        List<IngredientStockConfig> rows = jdbcTemplate.query(
+            "SELECT id, default_unit_id FROM ingredients WHERE UPPER(ingredient_code) = UPPER(?) AND active = TRUE",
+            (rs, rowNum) -> new IngredientStockConfig(rs.getLong("id"), rs.getLong("default_unit_id")),
+            sku.getInventoryItemRef()
+        );
+        if (rows.isEmpty()) {
+            throw new IllegalStateException("Insufficient stock to lock group orders");
+        }
+        return rows.get(0);
+    }
+
+    private void reserveInventoryForOrder(GroupBuyOrderEntity order, Long skuId, IngredientStockConfig stockConfig) {
+        BigDecimal remaining = BigDecimal.valueOf(order.getQuantity()).setScale(3, RoundingMode.HALF_UP);
+        List<BatchStock> batchStocks = jdbcTemplate.query(
+            "SELECT id, quantity_available FROM inventory_batches WHERE ingredient_id = ? AND quantity_available > 0 ORDER BY expires_at ASC, received_at ASC",
+            (rs, rowNum) -> new BatchStock(
+                rs.getLong("id"),
+                rs.getBigDecimal("quantity_available").setScale(3, RoundingMode.HALF_UP)
+            ),
+            stockConfig.ingredientId()
+        );
+
+        for (BatchStock batch : batchStocks) {
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+                break;
+            }
+            BigDecimal reservedQty = batch.quantityAvailable().min(remaining).setScale(3, RoundingMode.HALF_UP);
+            int updated = jdbcTemplate.update(
+                "UPDATE inventory_batches SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?",
+                reservedQty,
+                batch.batchId(),
+                reservedQty
+            );
+            if (updated == 0) {
+                throw new IllegalStateException("Insufficient stock to lock group orders");
+            }
+
+            InventoryLockEntity lock = new InventoryLockEntity();
+            lock.setGroupBuyOrderId(order.getId());
+            lock.setIngredientId(stockConfig.ingredientId());
+            lock.setSkuId(skuId);
+            lock.setLockedQty(reservedQty);
+            lock.setUnitId(stockConfig.defaultUnitId());
+            lock.setLockStatus("LOCKED");
+            lock.setLockReason("GROUP_FORMED_INVENTORY_LOCK:BATCH:" + batch.batchId());
+            lock.setLockedAt(LocalDateTime.now());
+            inventoryLockRepository.save(lock);
+
+            remaining = remaining.subtract(reservedQty);
+        }
+
+        if (remaining.compareTo(BigDecimal.ZERO) > 0) {
+            throw new IllegalStateException("Insufficient stock to lock group orders");
+        }
+    }
+
+    private void releaseInventoryReservation(InventoryLockEntity lock) {
+        Long batchId = parseBatchId(lock.getLockReason());
+        if (batchId == null) {
+            return;
+        }
+        jdbcTemplate.update(
+            "UPDATE inventory_batches SET quantity_available = quantity_available + ? WHERE id = ?",
+            lock.getLockedQty(),
+            batchId
+        );
+    }
+
+    private Long parseBatchId(String lockReason) {
+        if (!StringUtils.hasText(lockReason)) {
+            return null;
+        }
+        int marker = lockReason.indexOf("BATCH:");
+        if (marker < 0) {
+            return null;
+        }
+        String value = lockReason.substring(marker + "BATCH:".length()).trim();
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private record IngredientStockConfig(Long ingredientId, Long defaultUnitId) {
+    }
+
+    private record BatchStock(Long batchId, BigDecimal quantityAvailable) {
+    }
+
     private Long currentOperatorId() {
         return userIdentityService.resolveCurrentUserId().orElseGet(() -> userRepository.findIdByUsername("store").orElse(1L));
     }
 
     private Long currentStudentId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication == null ? null : authentication.getName();
-        if (StringUtils.hasText(username)) {
-            List<Long> ids = jdbcTemplate.query(
-                "SELECT id FROM students WHERE UPPER(student_no) = UPPER(?) AND deleted_at IS NULL LIMIT 1",
-                (rs, rowNum) -> rs.getLong("id"),
-                username
-            );
-            if (!ids.isEmpty()) {
-                return ids.get(0);
-            }
+        if (authentication == null || !authentication.isAuthenticated() || !StringUtils.hasText(authentication.getName())) {
+            throw new AccessDeniedException("Student identity is required for store actions");
         }
 
-        List<Long> fallback = jdbcTemplate.query(
-            "SELECT id FROM students WHERE deleted_at IS NULL ORDER BY id ASC LIMIT 1",
-            (rs, rowNum) -> rs.getLong("id")
+        List<Long> ids = jdbcTemplate.query(
+            "SELECT id FROM students WHERE UPPER(student_no) = UPPER(?) AND deleted_at IS NULL",
+            (rs, rowNum) -> rs.getLong("id"),
+            authentication.getName()
         );
-        if (fallback.isEmpty()) {
-            throw new IllegalStateException("No student profile available for ordering");
+        if (ids.size() != 1) {
+            throw new AccessDeniedException("Authenticated principal is not bound to a single active student profile");
         }
-        return fallback.get(0);
+        return ids.get(0);
     }
 
     private List<CampaignCard> campaignCards(List<GroupBuyCampaignEntity> campaigns) {

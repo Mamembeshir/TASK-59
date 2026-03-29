@@ -99,7 +99,12 @@
         if (!button) {
           return;
         }
+        if (button.dataset.loading === 'true') {
+          return;
+        }
+        button.dataset.loading = 'true';
         button.dataset.original = button.innerHTML;
+        button.classList.add('is-loading');
         button.disabled = true;
         button.innerHTML = '<span class="spinner"></span> Saving...';
       });
@@ -107,10 +112,10 @@
 
     Array.from(document.querySelectorAll('input,select,textarea')).forEach(function (el) {
       el.addEventListener('invalid', function () {
-        el.classList.add('border-rose-400', 'ring-rose-100');
+        el.classList.add('is-invalid');
       });
       el.addEventListener('input', function () {
-        el.classList.remove('border-rose-400', 'ring-rose-100');
+        el.classList.remove('is-invalid');
       });
     });
   }

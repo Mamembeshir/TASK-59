@@ -2,10 +2,10 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/app-shell :: head('Grade Ledger')}"></head>
 <body th:replace="~{fragments/app-shell :: shell('Grade Entry Ledger', ~{::section})}">
-<section class="space-y-6">
+<section class="page-stack">
     <article class="card p-5">
         <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-lg font-bold">Append-Only Grade Entry</h3>
+            <h3 class="section-title">Append-Only Grade Entry</h3>
             <span class="badge badge-warning">Immediate GPA Impact</span>
         </div>
         <form method="post" th:action="@{/instructor/grades}" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -28,7 +28,7 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Recent Ledger Entries</h3>
+        <h3 class="section-title">Recent Ledger Entries</h3>
         <div class="overflow-x-auto">
             <table class="data-table">
                 <thead><tr><th>ID</th><th>When</th><th>Student</th><th>Class</th><th>Assessment</th><th>Score</th><th>Grade</th><th>Credits</th><th>GPA Impact</th><th>Delta</th><th>Op</th></tr></thead>
@@ -78,9 +78,15 @@
 
     panel.innerHTML = '<p class="text-slate-500">Calculating impact...</p>';
     try {
+      const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+      const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+      const headers = { 'Content-Type': 'application/json' };
+      if (csrfToken && csrfHeader) {
+        headers[csrfHeader] = csrfToken;
+      }
       const response = await fetch('/api/grades/preview', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
       });
       const data = await response.json();

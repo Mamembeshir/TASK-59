@@ -372,8 +372,61 @@ class GradeRecalculationEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "student_id")
+    private Long studentId;
+
+    @Column(name = "class_id")
+    private Long classId;
+
+    @Column(name = "triggered_by", nullable = false)
+    private Long triggeredBy;
+
+    @Column(name = "triggered_at", nullable = false)
+    private LocalDateTime triggeredAt;
+
+    @Column(name = "scope_json", nullable = false, columnDefinition = "json")
+    private String scopeJson;
+
+    @Column(name = "deterministic_hash", nullable = false)
+    private String deterministicHash;
+
+    @Column(name = "status", nullable = false)
+    private String status;
+
     public Long getId() {
         return id;
+    }
+
+    public String getDeterministicHash() {
+        return deterministicHash;
+    }
+
+    public void setStudentId(Long studentId) {
+        this.studentId = studentId;
+    }
+
+    public void setClassId(Long classId) {
+        this.classId = classId;
+    }
+
+    public void setTriggeredBy(Long triggeredBy) {
+        this.triggeredBy = triggeredBy;
+    }
+
+    public void setTriggeredAt(LocalDateTime triggeredAt) {
+        this.triggeredAt = triggeredAt;
+    }
+
+    public void setScopeJson(String scopeJson) {
+        this.scopeJson = scopeJson;
+    }
+
+    public void setDeterministicHash(String deterministicHash) {
+        this.deterministicHash = deterministicHash;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }
 
@@ -384,7 +437,49 @@ class GradeRecalculationDeltaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "recalculation_id", nullable = false)
+    private Long recalculationId;
+
+    @Column(name = "grade_ledger_entry_id", nullable = false)
+    private Long gradeLedgerEntryId;
+
+    @Column(name = "previous_result_json", nullable = false, columnDefinition = "json")
+    private String previousResultJson;
+
+    @Column(name = "new_result_json", nullable = false, columnDefinition = "json")
+    private String newResultJson;
+
+    @Column(name = "delta_json", nullable = false, columnDefinition = "json")
+    private String deltaJson;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
     public Long getId() {
         return id;
+    }
+
+    public void setRecalculationId(Long recalculationId) {
+        this.recalculationId = recalculationId;
+    }
+
+    public void setGradeLedgerEntryId(Long gradeLedgerEntryId) {
+        this.gradeLedgerEntryId = gradeLedgerEntryId;
+    }
+
+    public void setPreviousResultJson(String previousResultJson) {
+        this.previousResultJson = previousResultJson;
+    }
+
+    public void setNewResultJson(String newResultJson) {
+        this.newResultJson = newResultJson;
+    }
+
+    public void setDeltaJson(String deltaJson) {
+        this.deltaJson = deltaJson;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

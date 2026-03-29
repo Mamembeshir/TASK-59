@@ -2,33 +2,33 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/app-shell :: head('InstituteOps Dashboard')}"></head>
 <body th:replace="~{fragments/app-shell :: shell('Dashboard', ~{::section})}">
-<section class="space-y-6">
+<section class="page-stack">
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article class="card p-5">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Active Students</p>
-            <p class="mt-2 text-3xl font-extrabold">128</p>
-            <p class="mt-1 text-sm text-emerald-600">+4.1% this week</p>
+            <p class="mt-2 text-3xl font-extrabold" th:text="${activeStudents}">0</p>
+            <p class="mt-1 text-sm text-emerald-600">Current active lifecycle records</p>
         </article>
         <article class="card p-5">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pending Group-Buy Orders</p>
-            <p class="mt-2 text-3xl font-extrabold">19</p>
-            <p class="mt-1 text-sm text-amber-600">5 awaiting lock confirmation</p>
+            <p class="mt-2 text-3xl font-extrabold" th:text="${pendingGroupBuyOrders}">0</p>
+            <p class="mt-1 text-sm text-amber-600">Orders waiting for campaign completion</p>
         </article>
         <article class="card p-5">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Low Stock Alerts</p>
-            <p class="mt-2 text-3xl font-extrabold">7</p>
-            <p class="mt-1 text-sm text-rose-600">2 critical ingredients</p>
+            <p class="mt-2 text-3xl font-extrabold" th:text="${openSystemAlerts}">0</p>
+            <p class="mt-1 text-sm text-rose-600">Open operational alerts from backend rules</p>
         </article>
         <article class="card p-5">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Today's Revenue</p>
-            <p class="mt-2 text-3xl font-extrabold">$2,940</p>
-            <p class="mt-1 text-sm text-emerald-600">Offline payments synced</p>
+            <p class="mt-2 text-3xl font-extrabold" th:text="${'$' + todayRevenue}">$0</p>
+            <p class="mt-1 text-sm text-emerald-600">Sum of offline payment transactions today</p>
         </article>
     </div>
 
     <article class="card p-5">
         <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-lg font-bold">Personalized Recommendations</h3>
+            <h3 class="section-title">Personalized Recommendations</h3>
             <span class="text-xs text-slate-500">Live model output</span>
         </div>
         <div class="overflow-x-auto">
@@ -47,12 +47,12 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="text-lg font-bold">Operational Snapshot</h3>
-        <p class="mt-2 text-sm text-slate-600">Metrics shown here are representative QA-friendly indicators so reviewers can quickly validate product readiness: enrollments, inventory pressure, order flow, and revenue health.</p>
+        <h3 class="section-title">Operational Snapshot</h3>
+        <p class="mt-2 text-sm text-slate-600">All KPI cards are calculated from current database records to reflect live operational state.</p>
     </article>
 
     <article class="card p-5" sec:authorize="hasRole('SYSTEM_ADMIN')">
-        <h3 class="text-lg font-bold">Integrations</h3>
+        <h3 class="section-title">Integrations</h3>
         <p class="mt-2 text-sm text-slate-600">Configure and monitor internal connectivity, synchronization jobs, and secure service handshakes from the admin workspace.</p>
         <a class="btn-soft mt-3" th:href="@{/admin}">Open Admin Workspace</a>
     </article>

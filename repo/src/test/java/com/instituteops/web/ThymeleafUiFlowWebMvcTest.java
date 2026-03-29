@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.instituteops.audit.AuditLogService;
 import com.instituteops.audit.RequestAuditFilter;
+import com.instituteops.governance.domain.GovernanceService;
 import com.instituteops.grades.domain.GradeEntryController;
 import com.instituteops.grades.domain.GradeEntryService;
 import com.instituteops.inventory.domain.InventoryController;
@@ -24,6 +25,7 @@ import com.instituteops.store.domain.CatalogController;
 import com.instituteops.store.domain.CatalogService;
 import com.instituteops.student.model.StudentModuleService;
 import com.instituteops.student.web.StudentController;
+import com.instituteops.web.GovernancePageController;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
@@ -39,6 +42,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(controllers = {
     HomeController.class,
     StudentController.class,
+    GovernancePageController.class,
     GradeEntryController.class,
     InventoryController.class,
     ProcurementController.class,
@@ -64,6 +68,10 @@ class ThymeleafUiFlowWebMvcTest {
     @MockBean
     private CatalogService catalogService;
     @MockBean
+    private GovernanceService governanceService;
+    @MockBean
+    private JdbcTemplate jdbcTemplate;
+    @MockBean
     private AuditLogService auditLogService;
     @MockBean
     private UserIdentityService userIdentityService;
@@ -84,6 +92,8 @@ class ThymeleafUiFlowWebMvcTest {
     void seedViewModelMocks() {
         org.mockito.Mockito.when(recommenderService.recommendationsForCurrentUser(org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of());
         org.mockito.Mockito.when(recommenderService.adminView()).thenReturn(new RecommenderService.AdminView(List.of()));
+        org.mockito.Mockito.when(jdbcTemplate.queryForObject(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq(Number.class)))
+            .thenReturn(0L);
 
         org.mockito.Mockito.when(studentModuleService.searchStudents(org.mockito.ArgumentMatchers.any())).thenReturn(List.of());
 
@@ -111,6 +121,8 @@ class ThymeleafUiFlowWebMvcTest {
             List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of()
         ));
         org.mockito.Mockito.when(catalogService.studentView()).thenReturn(new CatalogService.StudentView(List.of(), List.of()));
+        org.mockito.Mockito.when(governanceService.latestDuplicateCandidates()).thenReturn(List.of());
+        org.mockito.Mockito.when(governanceService.recycleBin()).thenReturn(List.of());
     }
 
     @Test
@@ -133,5 +145,6 @@ class ThymeleafUiFlowWebMvcTest {
         mockMvc.perform(get("/store")).andExpect(status().isOk());
         mockMvc.perform(get("/store/student")).andExpect(status().isOk());
         mockMvc.perform(get("/admin/recommender")).andExpect(status().isOk());
+        mockMvc.perform(get("/governance")).andExpect(status().isOk());
     }
 }

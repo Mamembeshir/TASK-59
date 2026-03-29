@@ -2,22 +2,57 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/app-shell :: head('Store Manager')}"></head>
 <body th:replace="~{fragments/app-shell :: shell('Store + Group-Buy Manager', ~{::section})}">
-<section class="space-y-6">
+<section class="page-stack">
+    <p class="status alert-success" th:if="${successMessage}" th:text="${successMessage}"></p>
+    <p class="status alert-error" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+
     <article class="card p-5">
         <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-lg font-bold">Catalog and Campaign Setup</h3>
+            <h3 class="section-title">Catalog and Campaign Setup</h3>
             <form method="post" th:action="@{/store/refresh}"><button class="btn-soft" type="submit">Refresh Rules</button></form>
         </div>
         <div class="grid gap-4 xl:grid-cols-2">
-            <form method="post" th:action="@{/store/spu}" class="card p-4 space-y-2"><h4 class="font-semibold">Create SPU</h4><input class="field-input" name="spuCode" placeholder="SPU Code" required><input class="field-input" name="name" placeholder="SPU Name" required><input class="field-input" name="description" placeholder="Description"><button class="btn-primary" type="submit">Create SPU</button></form>
-            <form method="post" th:action="@{/store/sku}" class="card p-4 space-y-2"><h4 class="font-semibold">Create SKU</h4><input class="field-input" type="number" name="spuId" placeholder="SPU ID" required><input class="field-input" name="skuCode" placeholder="SKU Code" required><input class="field-input" name="name" placeholder="SKU Name" required><input class="field-input" name="specs" placeholder='Specs JSON {"bundle":"A"}'><input class="field-input" type="number" name="purchaseLimitPerStudent" value="5" required><button class="btn-primary" type="submit">Create SKU</button></form>
-            <form method="post" th:action="@{/store/tier}" class="card p-4 space-y-2"><h4 class="font-semibold">Create Pricing Tier</h4><input class="field-input" type="number" name="skuId" placeholder="SKU ID" required><input class="field-input" type="number" name="minQty" placeholder="Min Qty" required><input class="field-input" type="number" step="0.01" name="unitPrice" placeholder="Unit Price" required><input class="field-input" name="currencyCode" value="USD" required><button class="btn-primary" type="submit">Create Tier</button></form>
-            <form method="post" th:action="@{/store/campaign}" class="card p-4 space-y-2"><h4 class="font-semibold">Create Campaign</h4><input class="field-input" name="campaignCode" placeholder="CMP-2026-APR" required><input class="field-input" type="number" name="skuId" placeholder="SKU ID" required><input class="field-input" name="title" placeholder="Campaign title" required><input class="field-input" type="datetime-local" name="startsAt" required><input class="field-input" type="datetime-local" name="endsAt" required><input class="field-input" type="time" name="cutoffTime" value="21:00"><input class="field-input" type="number" name="requiredParticipants" value="10" min="2"><input class="field-input" type="number" name="formationWindowHours" value="72" min="1"><button class="btn-primary" type="submit">Create Campaign</button></form>
+            <form method="post" th:action="@{/store/spu}" class="card p-4 space-y-2">
+                <h4 class="font-semibold">Create SPU</h4>
+                <input class="field-input" name="spuCode" placeholder="SPU Code" required>
+                <input class="field-input" name="name" placeholder="SPU Name" required>
+                <input class="field-input" name="description" placeholder="Description">
+                <button class="btn-primary" type="submit">Create SPU</button>
+            </form>
+            <form method="post" th:action="@{/store/sku}" class="card p-4 space-y-2">
+                <h4 class="font-semibold">Create SKU</h4>
+                <input class="field-input" type="number" name="spuId" placeholder="SPU ID" required>
+                <input class="field-input" name="skuCode" placeholder="SKU Code" required>
+                <input class="field-input" name="name" placeholder="SKU Name" required>
+                <input class="field-input" name="specs" placeholder='Specs JSON {"bundle":"A"}'>
+                <input class="field-input" type="number" name="purchaseLimitPerStudent" value="5" required>
+                <button class="btn-primary" type="submit">Create SKU</button>
+            </form>
+            <form method="post" th:action="@{/store/tier}" class="card p-4 space-y-2">
+                <h4 class="font-semibold">Create Pricing Tier</h4>
+                <input class="field-input" type="number" name="skuId" placeholder="SKU ID" required>
+                <input class="field-input" type="number" name="minQty" placeholder="Min Qty" required>
+                <input class="field-input" type="number" step="0.01" name="unitPrice" placeholder="Unit Price" required>
+                <input class="field-input" name="currencyCode" value="USD" required>
+                <button class="btn-primary" type="submit">Create Tier</button>
+            </form>
+            <form method="post" th:action="@{/store/campaign}" class="card p-4 space-y-2">
+                <h4 class="font-semibold">Create Campaign</h4>
+                <input class="field-input" name="campaignCode" placeholder="CMP-2026-APR" required>
+                <input class="field-input" type="number" name="skuId" placeholder="SKU ID" required>
+                <input class="field-input" name="title" placeholder="Campaign title" required>
+                <input class="field-input" type="datetime-local" name="startsAt" required>
+                <input class="field-input" type="datetime-local" name="endsAt" required>
+                <input class="field-input" type="time" name="cutoffTime" value="21:00">
+                <input class="field-input" type="number" name="requiredParticipants" value="10" min="2">
+                <input class="field-input" type="number" name="formationWindowHours" value="72" min="1">
+                <button class="btn-primary" type="submit">Create Campaign</button>
+            </form>
         </div>
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Campaign Windows and Live Countdown</h3>
+        <h3 class="section-title">Campaign Windows and Live Countdown</h3>
         <div class="overflow-x-auto">
             <table class="data-table">
                 <thead><tr><th>Code</th><th>Title</th><th>Status</th><th>SKU</th><th>Ends</th><th>Countdown</th><th>Groups</th></tr></thead>
@@ -37,7 +72,7 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Groups and Order Locks</h3>
+        <h3 class="section-title">Groups and Order Locks</h3>
         <div class="overflow-x-auto">
             <table class="data-table">
                 <thead><tr><th>Group</th><th>Campaign</th><th>Status</th><th>Participants</th><th>Expires</th><th>Action</th></tr></thead>
@@ -73,7 +108,7 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="text-lg font-bold">Catalog Snapshot</h3>
+        <h3 class="section-title">Catalog Snapshot</h3>
         <p class="mt-2 text-sm text-slate-600" th:text="${'SPUs: ' + #lists.size(vm.spus) + ', SKUs: ' + #lists.size(vm.skus) + ', Pricing tiers: ' + #lists.size(vm.tiers)}">Counts</p>
     </article>
 </section>

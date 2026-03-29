@@ -7,13 +7,21 @@ import com.instituteops.security.repo.UserRepository;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -26,8 +34,11 @@ public class GradeEntryService {
     private final GradeRuleVersionRepository gradeRuleVersionRepository;
     private final OverrideReasonCodeRepository overrideReasonCodeRepository;
     private final GradeLedgerEntryRepository gradeLedgerEntryRepository;
+    private final GradeRecalculationRepository gradeRecalculationRepository;
+    private final GradeRecalculationDeltaRepository gradeRecalculationDeltaRepository;
     private final UserIdentityService userIdentityService;
     private final UserRepository userRepository;
+    private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
     public GradeEntryService(
@@ -35,17 +46,41 @@ public class GradeEntryService {
         GradeRuleVersionRepository gradeRuleVersionRepository,
         OverrideReasonCodeRepository overrideReasonCodeRepository,
         GradeLedgerEntryRepository gradeLedgerEntryRepository,
+        GradeRecalculationRepository gradeRecalculationRepository,
+        GradeRecalculationDeltaRepository gradeRecalculationDeltaRepository,
         UserIdentityService userIdentityService,
         UserRepository userRepository,
+        JdbcTemplate jdbcTemplate,
         ObjectMapper objectMapper
     ) {
         this.gradeRuleSetRepository = gradeRuleSetRepository;
         this.gradeRuleVersionRepository = gradeRuleVersionRepository;
         this.overrideReasonCodeRepository = overrideReasonCodeRepository;
         this.gradeLedgerEntryRepository = gradeLedgerEntryRepository;
+        this.gradeRecalculationRepository = gradeRecalculationRepository;
+        this.gradeRecalculationDeltaRepository = gradeRecalculationDeltaRepository;
         this.userIdentityService = userIdentityService;
         this.userRepository = userRepository;
+        this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
+    }
+
+    public void assertCanManageGradeEntry(Authentication authentication, Long studentId, Long classId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException("Authentication required");
+        }
+        if (hasAnyRole(authentication, "ROLE_SYSTEM_ADMIN", "ROLE_REGISTRAR_FINANCE_CLERK")) {
+            return;
+        }
+        if (hasAnyRole(authentication, "ROLE_INSTRUCTOR")) {
+            Long instructorUserId = userRepository.findIdByUsername(authentication.getName())
+                .orElseThrow(() -> new AccessDeniedException("Instructor account is not linked to an active user"));
+            if (instructorCanManageGradeTarget(instructorUserId, studentId, classId)) {
+                return;
+            }
+            throw new AccessDeniedException("Instructor can only manage grades for assigned students/classes");
+        }
+        throw new AccessDeniedException("Role is not permitted to manage grades");
     }
 
     public List<GradeLedgerEntryEntity> latestLedger() {
@@ -98,6 +133,71 @@ public class GradeEntryService {
         return gradeLedgerEntryRepository.save(entity);
     }
 
+    @Transactional
+    public RecalculationResult recomputeStudentClass(Long studentId, Long classId, String reasonCode) {
+        if (studentId == null || classId == null) {
+            throw new IllegalArgumentException("studentId and classId are required");
+        }
+        if (!StringUtils.hasText(reasonCode)) {
+            throw new IllegalArgumentException("reasonCode is required");
+        }
+
+        CalculationContext context = resolveCalculationContext();
+        List<GradeLedgerEntryEntity> ledger = gradeLedgerEntryRepository.findByStudentIdAndClassIdOrderByEnteredAtDesc(studentId, classId);
+        if (ledger.isEmpty()) {
+            throw new IllegalArgumentException("No ledger entries found for student/class");
+        }
+
+        Map<String, GradeLedgerEntryEntity> latestByAssessment = new LinkedHashMap<>();
+        for (GradeLedgerEntryEntity entry : ledger) {
+            latestByAssessment.putIfAbsent(entry.getAssessmentKey(), entry);
+        }
+
+        GradeRecalculationEntity recalculation = new GradeRecalculationEntity();
+        recalculation.setStudentId(studentId);
+        recalculation.setClassId(classId);
+        recalculation.setTriggeredBy(currentUserId());
+        recalculation.setTriggeredAt(LocalDateTime.now());
+        recalculation.setScopeJson(toJson(Map.of("studentId", studentId, "classId", classId, "reasonCode", reasonCode)));
+        recalculation.setDeterministicHash(deterministicHash(context.ruleVersion().getId(), latestByAssessment.values().stream().toList()));
+        recalculation.setStatus("COMPLETED");
+        GradeRecalculationEntity savedRecalc = gradeRecalculationRepository.save(recalculation);
+
+        List<RecalculationDelta> deltas = new ArrayList<>();
+        for (GradeLedgerEntryEntity entry : latestByAssessment.values()) {
+            GradeImpact recomputed = calculateImpact(context.ruleVersion(), entry.getRawScore(), entry.getMaxScore());
+            Map<String, Object> previous = new LinkedHashMap<>();
+            previous.put("gradeLetter", entry.getGradeLetter());
+            previous.put("creditsEarned", entry.getCreditsEarned());
+            previous.put("gpaPoints", entry.getGpaPoints());
+            previous.put("ruleVersionId", entry.getRuleVersionId());
+
+            Map<String, Object> next = new LinkedHashMap<>();
+            next.put("gradeLetter", recomputed.gradeLetter());
+            next.put("creditsEarned", recomputed.creditsEarned());
+            next.put("gpaPoints", recomputed.gpaImpact());
+            next.put("ruleVersionId", context.ruleVersion().getId());
+            Map<String, Object> delta = Map.of(
+                "gradeChanged", !String.valueOf(entry.getGradeLetter()).equals(recomputed.gradeLetter()),
+                "deltaCredits", recomputed.creditsEarned().subtract(entry.getCreditsEarned()).setScale(3, RoundingMode.HALF_UP),
+                "deltaGpaPoints", recomputed.gpaImpact().subtract(entry.getGpaPoints()).setScale(3, RoundingMode.HALF_UP)
+            );
+
+            GradeRecalculationDeltaEntity deltaEntity = new GradeRecalculationDeltaEntity();
+            deltaEntity.setRecalculationId(savedRecalc.getId());
+            deltaEntity.setGradeLedgerEntryId(entry.getId());
+            deltaEntity.setPreviousResultJson(toJson(previous));
+            deltaEntity.setNewResultJson(toJson(next));
+            deltaEntity.setDeltaJson(toJson(delta));
+            deltaEntity.setCreatedAt(LocalDateTime.now());
+            gradeRecalculationDeltaRepository.save(deltaEntity);
+
+            deltas.add(new RecalculationDelta(entry.getId(), previous, next, delta));
+        }
+
+        return new RecalculationResult(savedRecalc.getId(), savedRecalc.getDeterministicHash(), deltas);
+    }
+
     private void validateRequest(GradeEntryRequest request) {
         if (request.studentId() == null || request.classId() == null || !StringUtils.hasText(request.assessmentKey())) {
             throw new IllegalArgumentException("studentId, classId, assessmentKey are required");
@@ -128,6 +228,10 @@ public class GradeEntryService {
     }
 
     private CalculationContext resolveCalculationContext(GradeEntryRequest request) {
+        return resolveCalculationContext();
+    }
+
+    private CalculationContext resolveCalculationContext() {
         GradeRuleSetEntity ruleset = gradeRuleSetRepository.findActiveAt(LocalDateTime.now()).stream().findFirst()
             .orElseThrow(() -> new IllegalStateException("No active grade ruleset configured"));
         GradeRuleVersionEntity version = gradeRuleVersionRepository.findTopByRulesetIdOrderByVersionNoDesc(ruleset.getId())
@@ -222,6 +326,72 @@ public class GradeEntryService {
         return userIdentityService.resolveCurrentUserId().orElseGet(() -> userRepository.findIdByUsername("sysadmin").orElse(1L));
     }
 
+    private boolean instructorCanManageGradeTarget(Long instructorUserId, Long studentId, Long classId) {
+        if (instructorUserId == null || studentId == null || classId == null) {
+            return false;
+        }
+        Integer count = jdbcTemplate.queryForObject(
+            """
+                SELECT COUNT(*)
+                FROM enrollments e
+                JOIN classes c ON c.id = e.class_id
+                WHERE e.student_id = ?
+                  AND e.class_id = ?
+                  AND e.deleted_at IS NULL
+                  AND e.enrollment_status IN ('ENROLLED', 'WAITLISTED', 'COMPLETED')
+                  AND c.instructor_user_id = ?
+            """,
+            Integer.class,
+            studentId,
+            classId,
+            instructorUserId
+        );
+        return count != null && count > 0;
+    }
+
+    private static boolean hasAnyRole(Authentication authentication, String... roles) {
+        if (authentication == null) {
+            return false;
+        }
+        java.util.Set<String> granted = authentication.getAuthorities().stream()
+            .map(GrantedAuthority::getAuthority)
+            .collect(java.util.stream.Collectors.toSet());
+        for (String role : roles) {
+            if (granted.contains(role)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String deterministicHash(Long ruleVersionId, List<GradeLedgerEntryEntity> entries) {
+        try {
+            StringBuilder source = new StringBuilder("rv=").append(ruleVersionId);
+            for (GradeLedgerEntryEntity entry : entries) {
+                source.append('|')
+                    .append(entry.getId()).append(':')
+                    .append(entry.getAssessmentKey()).append(':')
+                    .append(entry.getRawScore()).append('/').append(entry.getMaxScore());
+            }
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(source.toString().getBytes(StandardCharsets.UTF_8));
+            StringBuilder out = new StringBuilder();
+            for (byte b : digest) {
+                out.append(String.format("%02x", b));
+            }
+            return out.toString();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Unable to compute recalculation hash", ex);
+        }
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Unable to serialize recalculation payload", ex);
+        }
+    }
+
     private static String normalizeOperationType(String operationType) {
         if (!StringUtils.hasText(operationType)) {
             return "ENTRY";
@@ -278,5 +448,11 @@ public class GradeEntryService {
         BigDecimal deltaCredits,
         BigDecimal deltaGpaImpact
     ) {
+    }
+
+    public record RecalculationDelta(Long gradeLedgerEntryId, Map<String, Object> previousResult, Map<String, Object> newResult, Map<String, Object> delta) {
+    }
+
+    public record RecalculationResult(Long recalculationId, String deterministicHash, List<RecalculationDelta> deltas) {
     }
 }

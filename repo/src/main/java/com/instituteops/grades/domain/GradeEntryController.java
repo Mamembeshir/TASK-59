@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.annotation.Validated;
@@ -34,22 +35,32 @@ public class GradeEntryController {
     }
 
     @PostMapping("/instructor/grades")
-    public String appendEntry(@ModelAttribute @Valid GradeFormRequest form) {
+    public String appendEntry(Authentication authentication, @ModelAttribute @Valid GradeFormRequest form) {
+        gradeEntryService.assertCanManageGradeEntry(authentication, form.studentId(), form.classId());
         gradeEntryService.appendLedgerEntry(toRequest(form));
         return "redirect:/instructor/grades";
     }
 
     @ResponseBody
     @PostMapping("/api/grades/preview")
-    public GradeEntryService.GradeImpact preview(@RequestBody @Valid GradeApiRequest apiRequest) {
+    public GradeEntryService.GradeImpact preview(Authentication authentication, @RequestBody @Valid GradeApiRequest apiRequest) {
+        gradeEntryService.assertCanManageGradeEntry(authentication, apiRequest.studentId(), apiRequest.classId());
         return gradeEntryService.preview(toRequest(apiRequest));
     }
 
     @ResponseBody
     @PostMapping("/api/grades/ledger")
-    public ResponseEntity<GradeEntryService.GradeImpact> appendFromApi(@RequestBody @Valid GradeApiRequest apiRequest) {
+    public ResponseEntity<GradeEntryService.GradeImpact> appendFromApi(Authentication authentication, @RequestBody @Valid GradeApiRequest apiRequest) {
+        gradeEntryService.assertCanManageGradeEntry(authentication, apiRequest.studentId(), apiRequest.classId());
         gradeEntryService.appendLedgerEntry(toRequest(apiRequest));
         return ResponseEntity.ok(gradeEntryService.preview(toRequest(apiRequest)));
+    }
+
+    @ResponseBody
+    @PostMapping("/api/grades/recompute")
+    public ResponseEntity<GradeEntryService.RecalculationResult> recompute(Authentication authentication, @RequestBody @Valid RecomputeApiRequest request) {
+        gradeEntryService.assertCanManageGradeEntry(authentication, request.studentId(), request.classId());
+        return ResponseEntity.ok(gradeEntryService.recomputeStudentClass(request.studentId(), request.classId(), request.reasonCode()));
     }
 
     private static GradeEntryService.GradeEntryRequest toRequest(GradeFormRequest form) {
@@ -107,6 +118,13 @@ public class GradeEntryController {
         String operationType,
         String reasonCode,
         Long previousEntryId
+    ) {
+    }
+
+    public record RecomputeApiRequest(
+        @NotNull Long studentId,
+        @NotNull Long classId,
+        @NotBlank String reasonCode
     ) {
     }
 }

@@ -2,9 +2,9 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/app-shell :: head('Procurement')}"></head>
 <body th:replace="~{fragments/app-shell :: shell('Closed-Loop Procurement', ~{::section})}">
-<section class="space-y-6">
+<section class="page-stack">
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Supplier Profiles and Price History</h3>
+        <h3 class="section-title">Supplier Profiles and Price History</h3>
         <div class="grid gap-4 xl:grid-cols-3">
             <form method="post" th:action="@{/procurement/supplier}" class="card p-4 space-y-2">
                 <h4 class="font-semibold">Supplier Profile</h4>
@@ -36,24 +36,95 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Request → Approval → Receiving</h3>
+        <h3 class="section-title">Request -> Approval -> Receiving</h3>
         <div class="grid gap-4 xl:grid-cols-3">
-            <form method="post" th:action="@{/procurement/request}" class="card p-4 space-y-2"><h4 class="font-semibold">Create Request</h4><input class="field-input" name="justification" placeholder="Justification"><input class="field-input" type="date" name="neededBy"><button class="btn-primary" type="submit">Create Request</button></form>
-            <form method="post" th:action="@{/procurement/request-line}" class="card p-4 space-y-2"><h4 class="font-semibold">Add Request Line</h4><input class="field-input" type="number" name="requestId" placeholder="Request ID" required><input class="field-input" type="number" name="ingredientId" placeholder="Ingredient ID" required><input class="field-input" type="number" step="0.001" name="requestedQty" placeholder="Requested Qty" required><input class="field-input" type="number" name="unitId" placeholder="Unit ID" required><input class="field-input" type="number" step="0.0001" name="estimatedUnitPrice" placeholder="Estimated Unit Price"><input class="field-input" name="note" placeholder="Note"><button class="btn-primary" type="submit">Submit Line</button></form>
-            <form method="post" th:action="@{/procurement/approve}" class="card p-4 space-y-2"><h4 class="font-semibold">Approval</h4><input class="field-input" type="number" name="requestId" placeholder="Request ID" required><select class="field-select" name="decision"><option>APPROVED</option><option>REJECTED</option></select><input class="field-input" name="decisionNote" placeholder="Decision Note"><button class="btn-primary" type="submit">Record Approval</button></form>
-            <form method="post" th:action="@{/procurement/order}" class="card p-4 space-y-2"><h4 class="font-semibold">Create Purchase Order</h4><input class="field-input" type="number" name="requestId" placeholder="Approved Request ID" required><input class="field-input" type="number" name="supplierId" placeholder="Supplier ID" required><button class="btn-primary" type="submit">Create PO</button></form>
-            <form method="post" th:action="@{/procurement/receive}" class="card p-4 space-y-2 xl:col-span-2"><h4 class="font-semibold">Receive Goods</h4><div class="grid gap-2 md:grid-cols-3"><input class="field-input" type="number" name="purchaseOrderId" placeholder="PO ID" required><input class="field-input" type="number" name="purchaseOrderLineId" placeholder="PO Line ID" required><input class="field-input" name="batchNo" placeholder="Batch No" required><input class="field-input" type="number" step="0.001" name="acceptedQty" placeholder="Accepted Qty" required><input class="field-input" type="number" step="0.001" name="rejectedQty" placeholder="Rejected Qty"><input class="field-input" type="date" name="expiresAt"></div><input class="field-input" name="note" placeholder="Receipt Note"><button class="btn-primary" type="submit">Post Receipt</button></form>
+            <form method="post" th:action="@{/procurement/request}" class="card p-4 space-y-2">
+                <h4 class="font-semibold">Create Request</h4>
+                <input class="field-input" name="justification" placeholder="Justification">
+                <input class="field-input" type="date" name="neededBy">
+                <button class="btn-primary" type="submit">Create Request</button>
+            </form>
+            <form method="post" th:action="@{/procurement/request-line}" class="card p-4 space-y-2">
+                <h4 class="font-semibold">Add Request Line</h4>
+                <input class="field-input" type="number" name="requestId" placeholder="Request ID" required>
+                <input class="field-input" type="number" name="ingredientId" placeholder="Ingredient ID" required>
+                <input class="field-input" type="number" step="0.001" name="requestedQty" placeholder="Requested Qty" required>
+                <input class="field-input" type="number" name="unitId" placeholder="Unit ID" required>
+                <input class="field-input" type="number" step="0.0001" name="estimatedUnitPrice" placeholder="Estimated Unit Price">
+                <input class="field-input" name="note" placeholder="Note">
+                <button class="btn-primary" type="submit">Submit Line</button>
+            </form>
+            <form method="post" th:action="@{/procurement/approve}" class="card p-4 space-y-2">
+                <h4 class="font-semibold">Approval</h4>
+                <input class="field-input" type="number" name="requestId" placeholder="Request ID" required>
+                <select class="field-select" name="decision">
+                    <option>APPROVED</option>
+                    <option>REJECTED</option>
+                </select>
+                <input class="field-input" name="decisionNote" placeholder="Decision Note">
+                <button class="btn-primary" type="submit">Record Approval</button>
+            </form>
+            <form method="post" th:action="@{/procurement/order}" class="card p-4 space-y-2">
+                <h4 class="font-semibold">Create Purchase Order</h4>
+                <input class="field-input" type="number" name="requestId" placeholder="Approved Request ID" required>
+                <input class="field-input" type="number" name="supplierId" placeholder="Supplier ID" required>
+                <button class="btn-primary" type="submit">Create PO</button>
+            </form>
+            <form method="post" th:action="@{/procurement/receive}" class="card p-4 space-y-2 xl:col-span-2">
+                <h4 class="font-semibold">Receive Goods</h4>
+                <div class="grid gap-2 md:grid-cols-3">
+                    <input class="field-input" type="number" name="purchaseOrderId" placeholder="PO ID" required>
+                    <input class="field-input" type="number" name="purchaseOrderLineId" placeholder="PO Line ID" required>
+                    <input class="field-input" name="batchNo" placeholder="Batch No" required>
+                    <input class="field-input" type="number" step="0.001" name="acceptedQty" placeholder="Accepted Qty" required>
+                    <input class="field-input" type="number" step="0.001" name="rejectedQty" placeholder="Rejected Qty">
+                    <input class="field-input" type="date" name="expiresAt">
+                </div>
+                <input class="field-input" name="note" placeholder="Receipt Note">
+                <button class="btn-primary" type="submit">Post Receipt</button>
+            </form>
         </div>
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Low-stock / Near-expiry Alerts</h3>
-        <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Type</th><th>Severity</th><th>Ingredient</th><th>Message</th><th>When</th></tr></thead><tbody><tr th:each="a : ${alerts}"><td th:text="${a.alert_type}">LOW_STOCK</td><td><span class="badge badge-warning" th:text="${a.severity}">HIGH</span></td><td th:text="${a.entity_id}">1</td><td th:text="${a.message}">Message</td><td th:text="${a.created_at}">time</td></tr></tbody></table></div>
+        <h3 class="section-title">Low-stock / Near-expiry Alerts</h3>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                <tr><th>Type</th><th>Severity</th><th>Ingredient</th><th>Message</th><th>When</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="a : ${alerts}">
+                    <td th:text="${a.alert_type}">LOW_STOCK</td>
+                    <td><span class="badge badge-warning" th:text="${a.severity}">HIGH</span></td>
+                    <td th:text="${a.entity_id}">1</td>
+                    <td th:text="${a.message}">Message</td>
+                    <td th:text="${a.created_at}">time</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Replenishment Recommendations (30-day consumption)</h3>
-        <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Ingredient</th><th>30d Usage</th><th>Avg Daily</th><th>Suggested Reorder</th><th>Unit</th><th>Generated</th></tr></thead><tbody><tr th:each="r : ${recommendations}"><td th:text="${r.ingredient_id}">1</td><td th:text="${r.trailing_30d_consumption}">50</td><td th:text="${r.avg_daily_usage}">1.66</td><td class="font-semibold text-brand-700" th:text="${r.suggested_reorder_qty}">20</td><td th:text="${r.unit_id}">1</td><td th:text="${r.generated_at}">time</td></tr></tbody></table></div>
+        <h3 class="section-title">Replenishment Recommendations (30-day consumption)</h3>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                <tr><th>Ingredient</th><th>30d Usage</th><th>Avg Daily</th><th>Suggested Reorder</th><th>Unit</th><th>Generated</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${recommendations}">
+                    <td th:text="${r.ingredient_id}">1</td>
+                    <td th:text="${r.trailing_30d_consumption}">50</td>
+                    <td th:text="${r.avg_daily_usage}">1.66</td>
+                    <td class="font-semibold text-brand-700" th:text="${r.suggested_reorder_qty}">20</td>
+                    <td th:text="${r.unit_id}">1</td>
+                    <td th:text="${r.generated_at}">time</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </article>
 </section>
 </body>

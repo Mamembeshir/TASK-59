@@ -2,9 +2,9 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/app-shell :: head('Inventory Operations')}"></head>
 <body th:replace="~{fragments/app-shell :: shell('Inventory Operations', ~{::section})}">
-<section class="space-y-6">
+<section class="page-stack">
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Master Data</h3>
+        <h3 class="section-title">Master Data</h3>
         <div class="grid gap-4 xl:grid-cols-2">
             <form method="post" th:action="@{/inventory/unit}" class="card p-4 space-y-2">
                 <h4 class="font-semibold">Unit</h4>
@@ -45,7 +45,7 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">FIFO Issue / Mandatory Loss Reason</h3>
+        <h3 class="section-title">FIFO Issue / Mandatory Loss Reason</h3>
         <form method="post" th:action="@{/inventory/issue}" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             <input class="field-input" type="number" name="ingredientId" placeholder="Ingredient ID" required>
             <select class="field-select" name="transactionType"><option>ISSUE</option><option>LOSS</option><option>ADJUSTMENT</option></select>
@@ -58,7 +58,7 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Stock Count + Variance Thresholds</h3>
+        <h3 class="section-title">Stock Count + Variance Thresholds</h3>
         <form method="post" th:action="@{/inventory/stock-count}" class="grid gap-3 md:grid-cols-4">
             <input class="field-input" type="number" name="ingredientId" placeholder="Ingredient ID" required>
             <input class="field-input" type="number" step="0.001" name="actualQty" placeholder="Actual Qty" required>
@@ -85,7 +85,7 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Current Inventory (Default Units)</h3>
+        <h3 class="section-title">Current Inventory (Default Units)</h3>
         <div class="overflow-x-auto">
             <table class="data-table">
                 <thead><tr><th>Ingredient ID</th><th>On Hand</th></tr></thead>

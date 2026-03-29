@@ -32,7 +32,7 @@ app:
   upload:
     base-path: ${APP_UPLOAD_BASE_PATH:/uploads}
   encryption:
-    aes-key-base64: ${APP_ENCRYPTION_AES_KEY_BASE64:MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=}
+    aes-key-base64: ${APP_ENCRYPTION_AES_KEY_BASE64}
 
 ---
 spring:

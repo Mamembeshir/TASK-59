@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -56,7 +58,26 @@ public class RecommenderController {
 
     @ResponseBody
     @PostMapping("/api/recommender/events")
-    public ResponseEntity<?> event(@RequestBody RecordEventRequest body) {
+    public ResponseEntity<?> event(@RequestBody RecordEventRequest body, Authentication authentication) {
+        Long principalStudentId = recommenderService.resolveCurrentPrincipalStudentId(authentication);
+        RecommenderService.RecordEventRequest req = new RecommenderService.RecordEventRequest(
+            body.eventType(),
+            principalStudentId,
+            body.itemType(),
+            body.itemId(),
+            body.eventValue(),
+            body.occurredAt(),
+            body.source()
+        );
+        return ResponseEntity.ok(recommenderService.recordEvent(req));
+    }
+
+    @ResponseBody
+    @PostMapping("/api/recommender/admin/events")
+    public ResponseEntity<?> adminEvent(@RequestBody RecordEventRequest body) {
+        if (body.studentId() == null) {
+            throw new AccessDeniedException("studentId is required for admin event ingestion");
+        }
         RecommenderService.RecordEventRequest req = new RecommenderService.RecordEventRequest(
             body.eventType(),
             body.studentId(),

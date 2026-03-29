@@ -2,9 +2,9 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/app-shell :: head('Recommender Admin')}"></head>
 <body th:replace="~{fragments/app-shell :: shell('Offline Recommender Admin', ~{::section})}">
-<section class="space-y-6">
+<section class="page-stack">
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Model Operations</h3>
+        <h3 class="section-title">Model Operations</h3>
         <div class="grid gap-4 xl:grid-cols-3">
             <form method="post" th:action="@{/admin/recommender/train}" class="card p-4 space-y-2">
                 <h4 class="font-semibold">Train New Version</h4>
@@ -27,7 +27,7 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Model Versions</h3>
+        <h3 class="section-title">Model Versions</h3>
         <div th:each="card : ${vm.models}" class="mb-4 rounded-xl border border-slate-200 p-4">
             <p class="text-sm font-semibold"><span th:text="${card.model.modelCode}">MODEL</span> <span class="badge badge-warning" th:text="${card.model.algorithmFamily + ' / ' + card.model.similarityMetric}">USER_CF / COSINE</span></p>
             <p class="mt-2 text-sm text-slate-600" th:text="${'Serving recommendations: ' + card.servingRecommendationCount}">Serving recommendations: 0</p>

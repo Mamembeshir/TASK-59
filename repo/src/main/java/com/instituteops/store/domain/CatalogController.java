@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping
@@ -87,8 +88,13 @@ public class CatalogController {
     }
 
     @PostMapping("/store/group/{groupId}/confirm")
-    public String confirmGroup(@PathVariable Long groupId) {
-        catalogService.confirmGroupOrders(groupId);
+    public String confirmGroup(@PathVariable Long groupId, RedirectAttributes redirectAttributes) {
+        try {
+            catalogService.confirmGroupOrders(groupId);
+            redirectAttributes.addFlashAttribute("successMessage", "Inventory lock confirmation completed for the selected group.");
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
         return "redirect:/store";
     }
 
@@ -102,10 +108,30 @@ public class CatalogController {
     public String placeOrder(
         @RequestParam Long campaignId,
         @RequestParam(required = false) String groupCode,
-        @RequestParam(defaultValue = "1") Integer quantity
+        @RequestParam(defaultValue = "1") Integer quantity,
+        RedirectAttributes redirectAttributes
     ) {
-        catalogService.placeOrder(new CatalogService.PlaceOrderRequest(campaignId, groupCode, quantity));
+        try {
+            catalogService.placeOrder(new CatalogService.PlaceOrderRequest(campaignId, groupCode, quantity));
+            redirectAttributes.addFlashAttribute("successMessage", "Group-buy order submitted successfully.");
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", storeOrderErrorMessage(ex));
+        }
         return "redirect:/store/student";
+    }
+
+    private String storeOrderErrorMessage(RuntimeException ex) {
+        String message = ex.getMessage() == null ? "Store action failed." : ex.getMessage();
+        if (message.contains("cutoff")) {
+            return "Daily cutoff reached for this campaign. Please place your order earlier or choose a different campaign.";
+        }
+        if (message.contains("Group code not found") || message.contains("FORMING groups")) {
+            return "Unable to join that group. Confirm the group code and ensure the group is still forming.";
+        }
+        if (message.contains("Purchase limit exceeded")) {
+            return "Purchase limit exceeded for this campaign. Reduce quantity or wait for capacity to reset.";
+        }
+        return message;
     }
 
     @ResponseBody

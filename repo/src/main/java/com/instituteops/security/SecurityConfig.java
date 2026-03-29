@@ -3,6 +3,7 @@ package com.instituteops.security;
 import com.instituteops.audit.RequestAuditFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -54,10 +55,11 @@ public class SecurityConfig {
             .authenticationProvider(daoAuthenticationProvider)
             .httpBasic(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/login", "/css/**", "/error").permitAll()
+                .requestMatchers("/", "/login", "/css/**", "/js/**", "/error").permitAll()
                 .requestMatchers("/api/internal/**").hasAuthority("API_INTERNAL")
                 .requestMatchers("/admin/**").hasRole(RoleCode.SYSTEM_ADMIN.name())
                 .requestMatchers("/registrar/**").hasAnyRole(RoleCode.SYSTEM_ADMIN.name(), RoleCode.REGISTRAR_FINANCE_CLERK.name())
+                .requestMatchers("/governance/**").hasAnyRole(RoleCode.SYSTEM_ADMIN.name(), RoleCode.REGISTRAR_FINANCE_CLERK.name())
                 .requestMatchers("/instructor/**").hasAnyRole(RoleCode.SYSTEM_ADMIN.name(), RoleCode.INSTRUCTOR.name())
                 .requestMatchers("/inventory/**").hasAnyRole(RoleCode.SYSTEM_ADMIN.name(), RoleCode.INVENTORY_MANAGER.name())
                 .requestMatchers("/procurement/**").hasAnyRole(RoleCode.SYSTEM_ADMIN.name(), RoleCode.PROCUREMENT_APPROVER.name())
@@ -74,10 +76,18 @@ public class SecurityConfig {
                     RoleCode.STORE_MANAGER.name(),
                     RoleCode.STUDENT.name()
                 )
+                .requestMatchers("/api/governance/students/*/history").hasAnyRole(
+                    RoleCode.SYSTEM_ADMIN.name(),
+                    RoleCode.REGISTRAR_FINANCE_CLERK.name(),
+                    RoleCode.INSTRUCTOR.name(),
+                    RoleCode.STUDENT.name()
+                )
+                .requestMatchers("/api/governance/**").hasAnyRole(RoleCode.SYSTEM_ADMIN.name(), RoleCode.REGISTRAR_FINANCE_CLERK.name())
                 .requestMatchers("/admin/recommender/**").hasRole(RoleCode.SYSTEM_ADMIN.name())
                 .requestMatchers("/api/recommender/train/**", "/api/recommender/incremental/**", "/api/recommender/rollback/**").hasRole(
                     RoleCode.SYSTEM_ADMIN.name()
                 )
+                .requestMatchers("/api/recommender/admin/**").hasRole(RoleCode.SYSTEM_ADMIN.name())
                 .requestMatchers("/api/recommender/**").hasAnyRole(
                     RoleCode.SYSTEM_ADMIN.name(),
                     RoleCode.STUDENT.name(),
@@ -85,11 +95,22 @@ public class SecurityConfig {
                     RoleCode.INSTRUCTOR.name(),
                     RoleCode.REGISTRAR_FINANCE_CLERK.name()
                 )
-                .requestMatchers("/student/**", "/api/students/**", "/api/classes/**").hasAnyRole(
+                .requestMatchers(HttpMethod.GET, "/student/**", "/api/students/**", "/api/classes/**").hasAnyRole(
                     RoleCode.SYSTEM_ADMIN.name(),
                     RoleCode.REGISTRAR_FINANCE_CLERK.name(),
                     RoleCode.INSTRUCTOR.name(),
                     RoleCode.STUDENT.name()
+                )
+                .requestMatchers(HttpMethod.POST, "/student/*/homework").hasAnyRole(
+                    RoleCode.SYSTEM_ADMIN.name(),
+                    RoleCode.REGISTRAR_FINANCE_CLERK.name(),
+                    RoleCode.INSTRUCTOR.name(),
+                    RoleCode.STUDENT.name()
+                )
+                .requestMatchers("/student/**", "/api/students/**", "/api/classes/**").hasAnyRole(
+                    RoleCode.SYSTEM_ADMIN.name(),
+                    RoleCode.REGISTRAR_FINANCE_CLERK.name(),
+                    RoleCode.INSTRUCTOR.name()
                 )
                 .requestMatchers("/api/grades/**").hasAnyRole(
                     RoleCode.SYSTEM_ADMIN.name(),

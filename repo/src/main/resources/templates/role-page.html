@@ -2,7 +2,7 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/app-shell :: head('Role Workspace')}"></head>
 <body th:replace="~{fragments/app-shell :: shell('Role Workspace', ~{::section})}">
-<section class="space-y-6">
+<section class="page-stack">
     <article class="card p-6">
         <h2 class="text-2xl font-extrabold tracking-tight">Role Protected Area</h2>
         <p class="mt-2 text-sm text-slate-600">Access is enforced by least-privilege RBAC. This workspace is visible only to permitted roles.</p>

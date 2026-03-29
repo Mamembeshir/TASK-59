@@ -35,6 +35,22 @@ public class InternalApiClientEntity {
         return id;
     }
 
+    public void setClientKey(String clientKey) {
+        this.clientKey = clientKey;
+    }
+
+    public void setClientSecretHash(String clientSecretHash) {
+        this.clientSecretHash = clientSecretHash;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
     public String getClientKey() {
         return clientKey;
     }

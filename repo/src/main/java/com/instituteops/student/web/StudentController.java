@@ -36,9 +36,10 @@ public class StudentController {
     }
 
     @GetMapping("/student")
-    public String studentList(@RequestParam(required = false) String q, Model model) {
+    public String studentList(@RequestParam(required = false) String q, Authentication authentication, Model model) {
         model.addAttribute("query", q == null ? "" : q);
-        model.addAttribute("students", studentModuleService.searchStudents(q));
+        model.addAttribute("students", studentModuleService.searchStudentsForPrincipal(authentication, q));
+        model.addAttribute("canCreateStudent", studentModuleService.canMutateStudentRecord(authentication));
         return "student-list";
     }
 
@@ -52,8 +53,10 @@ public class StudentController {
         @RequestParam(required = false) String contactEmail,
         @RequestParam(required = false) String contactPhone,
         @RequestParam(required = false) String contactAddress,
-        @RequestParam(required = false) String emergencyContact
+        @RequestParam(required = false) String emergencyContact,
+        Authentication authentication
     ) {
+        studentModuleService.assertCanCreateStudent(authentication);
         StudentProfileEntity student = studentModuleService.createStudent(new StudentModuleService.StudentCreateRequest(
             studentNo,
             firstName,
@@ -75,29 +78,34 @@ public class StudentController {
         Authentication authentication,
         Model model
     ) {
+        studentModuleService.assertCanAccessStudent(authentication, id);
         boolean allowUnmask = unmask && studentModuleService.canUnmask(authentication);
         StudentModuleService.StudentTimelineView timeline = studentModuleService.timeline(id, allowUnmask);
         List<CourseClassRefEntity> classes = studentModuleService.classes();
         model.addAttribute("timeline", timeline);
         model.addAttribute("classes", classes);
         model.addAttribute("allowUnmask", allowUnmask);
+        model.addAttribute("canMutate", studentModuleService.canMutateStudentRecord(authentication));
         return "student-view";
     }
 
     @PostMapping("/student/{id}/status")
-    public String updateStatus(@PathVariable Long id, @RequestParam String status) {
+    public String updateStatus(@PathVariable Long id, @RequestParam String status, Authentication authentication) {
+        studentModuleService.assertCanMutateStudentRecord(authentication, id);
         studentModuleService.updateStatus(id, status);
         return "redirect:/student/" + id;
     }
 
     @PostMapping("/student/{id}/delete")
-    public String deleteStudent(@PathVariable Long id) {
+    public String deleteStudent(@PathVariable Long id, Authentication authentication) {
+        studentModuleService.assertCanMutateStudentRecord(authentication, id);
         studentModuleService.softDeleteStudent(id);
         return "redirect:/student";
     }
 
     @PostMapping("/student/{id}/restore")
-    public String restoreStudent(@PathVariable Long id) {
+    public String restoreStudent(@PathVariable Long id, Authentication authentication) {
+        studentModuleService.assertCanMutateStudentRecord(authentication, id);
         studentModuleService.restoreStudent(id);
         return "redirect:/student/" + id;
     }
@@ -107,8 +115,10 @@ public class StudentController {
         @PathVariable Long id,
         @RequestParam Long classId,
         @RequestParam String enrollmentStatus,
-        @RequestParam(required = false) LocalDate completionDate
+        @RequestParam(required = false) LocalDate completionDate,
+        Authentication authentication
     ) {
+        studentModuleService.assertCanMutateStudentRecord(authentication, id);
         studentModuleService.enroll(id, new StudentModuleService.EnrollmentCreateRequest(classId, enrollmentStatus, completionDate));
         return "redirect:/student/" + id;
     }
@@ -121,8 +131,10 @@ public class StudentController {
         @RequestParam BigDecimal amount,
         @RequestParam(defaultValue = "USD") String currencyCode,
         @RequestParam(required = false) String paymentReference,
-        @RequestParam(required = false) String note
+        @RequestParam(required = false) String note,
+        Authentication authentication
     ) {
+        studentModuleService.assertCanMutateStudentRecord(authentication, id);
         studentModuleService.recordPayment(
             id,
             new StudentModuleService.PaymentCreateRequest(enrollmentId, paymentMethod, amount, currencyCode, paymentReference, note)
@@ -136,8 +148,10 @@ public class StudentController {
         @RequestParam Long enrollmentId,
         @RequestParam Long classSessionId,
         @RequestParam String attendanceStatus,
-        @RequestParam(required = false) String note
+        @RequestParam(required = false) String note,
+        Authentication authentication
     ) {
+        studentModuleService.assertCanMutateStudentRecord(authentication, id);
         studentModuleService.recordAttendance(
             id,
             new StudentModuleService.AttendanceCreateRequest(enrollmentId, classSessionId, attendanceStatus, note)
@@ -151,8 +165,10 @@ public class StudentController {
         @RequestParam(required = false) Long classId,
         @RequestParam(required = false) Long classSessionId,
         @RequestParam String commentText,
-        @RequestParam(defaultValue = "INTERNAL") String visibility
+        @RequestParam(defaultValue = "INTERNAL") String visibility,
+        Authentication authentication
     ) {
+        studentModuleService.assertCanMutateStudentRecord(authentication, id);
         studentModuleService.recordComment(id, new StudentModuleService.CommentCreateRequest(classId, classSessionId, commentText, visibility));
         return "redirect:/student/" + id;
     }
@@ -163,8 +179,10 @@ public class StudentController {
         @RequestParam(required = false) Long classId,
         @RequestParam(required = false) Long classSessionId,
         @RequestParam(required = false) String expectedChecksum,
-        @RequestParam("file") MultipartFile file
+        @RequestParam("file") MultipartFile file,
+        Authentication authentication
     ) {
+        studentModuleService.assertCanUploadHomework(authentication, id);
         studentModuleService.uploadHomework(
             id,
             new StudentModuleService.HomeworkUploadRequest(classId, classSessionId, expectedChecksum),
@@ -175,8 +193,8 @@ public class StudentController {
 
     @ResponseBody
     @GetMapping("/api/students")
-    public List<StudentSummary> apiSearch(@RequestParam(required = false) String q) {
-        return studentModuleService.searchStudents(q).stream()
+    public List<StudentSummary> apiSearch(@RequestParam(required = false) String q, Authentication authentication) {
+        return studentModuleService.searchStudentsForPrincipal(authentication, q).stream()
             .map(s -> new StudentSummary(s.getId(), s.getStudentNo(), s.getFirstName(), s.getLastName(), s.getStatus(), s.getMaskedEmail(), s.getMaskedPhone()))
             .toList();
     }
@@ -188,6 +206,7 @@ public class StudentController {
         @RequestParam(defaultValue = "false") boolean unmask,
         Authentication authentication
     ) {
+        studentModuleService.assertCanAccessStudent(authentication, id);
         boolean allowUnmask = unmask && studentModuleService.canUnmask(authentication);
         return studentModuleService.timeline(id, allowUnmask);
     }

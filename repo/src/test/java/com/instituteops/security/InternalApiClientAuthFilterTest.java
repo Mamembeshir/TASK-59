@@ -2,6 +2,7 @@ package com.instituteops.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,16 +27,20 @@ class InternalApiClientAuthFilterTest {
     private InternalApiClientRepository internalApiClientRepository;
     @Mock
     private PasswordEncoder passwordEncoder;
+    @Mock
+    private InternalSyncPolicyService internalSyncPolicyService;
 
     private InternalApiClientAuthFilter filter;
 
     @BeforeEach
     void setUp() {
-        filter = new InternalApiClientAuthFilter(internalApiClientRepository, passwordEncoder);
+        filter = new InternalApiClientAuthFilter(internalApiClientRepository, passwordEncoder, internalSyncPolicyService);
     }
 
     @Test
     void deniesRequestWhenHeadersMissing() throws Exception {
+        when(internalSyncPolicyService.currentPolicy()).thenReturn(new InternalSyncPolicyService.InternalSyncPolicy(true, false));
+
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/internal/ping");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -49,7 +54,11 @@ class InternalApiClientAuthFilterTest {
 
     @Test
     void authenticatesValidClientCredentials() throws Exception {
+        when(internalSyncPolicyService.currentPolicy()).thenReturn(new InternalSyncPolicyService.InternalSyncPolicy(true, true));
+        when(internalSyncPolicyService.isTrustedLanAddress(anyString())).thenReturn(true);
+
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/internal/ping");
+        request.setRemoteAddr("127.0.0.1");
         request.addHeader(InternalApiClientAuthFilter.API_KEY_HEADER, "local-sync-client");
         request.addHeader(InternalApiClientAuthFilter.API_SECRET_HEADER, "secret");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -66,5 +75,6 @@ class InternalApiClientAuthFilterTest {
 
         assertThat(response.getStatus()).isEqualTo(204);
         verify(internalApiClientRepository).findByClientKeyAndActiveTrue("local-sync-client");
+        verify(internalSyncPolicyService).isTrustedLanAddress(eq("127.0.0.1"));
     }
 }

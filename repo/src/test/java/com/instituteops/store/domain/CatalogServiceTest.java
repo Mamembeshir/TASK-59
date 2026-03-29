@@ -2,6 +2,8 @@ package com.instituteops.store.domain;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.when;
 
 import com.instituteops.recommender.domain.RecommenderService;
@@ -17,7 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
@@ -70,13 +74,15 @@ class CatalogServiceTest {
 
     @Test
     void placeOrder_enforcesPerStudentCampaignLimit() {
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("student1", "n/a"));
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken("student1", "n/a", AuthorityUtils.NO_AUTHORITIES)
+        );
 
         GroupBuyCampaignEntity campaign = new GroupBuyCampaignEntity();
         campaign.setStatus("ACTIVE");
         campaign.setStartsAt(LocalDateTime.now().minusHours(1));
         campaign.setEndsAt(LocalDateTime.now().plusHours(8));
-        campaign.setCutoffTime(LocalTime.now().plusHours(1));
+        campaign.setCutoffTime(LocalTime.MAX);
         campaign.setSkuId(8L);
 
         SkuCatalogEntity sku = new SkuCatalogEntity();
@@ -86,10 +92,38 @@ class CatalogServiceTest {
         when(groupBuyCampaignRepository.findById(1L)).thenReturn(Optional.of(campaign));
         when(skuCatalogRepository.findById(8L)).thenReturn(Optional.of(sku));
         when(groupBuyOrderRepository.sumCommittedQtyForStudent(1L, null)).thenReturn(2);
-        when(jdbcTemplate.query(any(String.class), any(org.springframework.jdbc.core.RowMapper.class), any(Object[].class))).thenReturn(List.of(1L));
+        when(jdbcTemplate.query(startsWith("SELECT id FROM students"), any(org.springframework.jdbc.core.RowMapper.class), eq("student1")))
+            .thenReturn(List.of(1L));
 
         assertThatThrownBy(() -> service.placeOrder(new CatalogService.PlaceOrderRequest(1L, null, 1)))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("Purchase limit exceeded");
+    }
+
+    @Test
+    void studentIdentityBinding_rejectsUnknownPrincipal() {
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken("ghost-student", "n/a", AuthorityUtils.NO_AUTHORITIES)
+        );
+        when(jdbcTemplate.query(startsWith("SELECT id FROM students"), any(org.springframework.jdbc.core.RowMapper.class), eq("ghost-student")))
+            .thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.studentView())
+            .isInstanceOf(AccessDeniedException.class)
+            .hasMessageContaining("single active student");
+    }
+
+    @Test
+    void studentIdentityBinding_preventsActingAsAnotherStudent() {
+        SecurityContextHolder.getContext().setAuthentication(
+            new UsernamePasswordAuthenticationToken("student1", "n/a", AuthorityUtils.NO_AUTHORITIES)
+        );
+        when(groupBuyCampaignRepository.findByStatusInOrderByStartsAtAsc(any())).thenReturn(List.of());
+        when(jdbcTemplate.query(startsWith("SELECT id FROM students"), any(org.springframework.jdbc.core.RowMapper.class), eq("student1")))
+            .thenReturn(List.of(3L));
+
+        service.studentView();
+
+        org.mockito.Mockito.verify(groupBuyOrderRepository).findByStudentIdOrderByPlacedAtDesc(3L);
     }
 }

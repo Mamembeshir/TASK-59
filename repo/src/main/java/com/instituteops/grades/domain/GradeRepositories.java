@@ -40,4 +40,6 @@ interface GradeRecalculationRepository extends JpaRepository<GradeRecalculationE
 }
 
 interface GradeRecalculationDeltaRepository extends JpaRepository<GradeRecalculationDeltaEntity, Long> {
+
+    List<GradeRecalculationDeltaEntity> findByRecalculationIdOrderByCreatedAtAsc(Long recalculationId);
 }

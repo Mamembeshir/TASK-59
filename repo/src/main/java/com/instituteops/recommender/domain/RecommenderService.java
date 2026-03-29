@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -224,6 +225,11 @@ public class RecommenderService {
             .limit(top)
             .map(r -> new RecommendationView(r.getItemType(), r.getItemId(), r.getRankNo(), r.getScore(), lookupItemLabel(r.getItemType(), r.getItemId())))
             .toList();
+    }
+
+    public Long resolveCurrentPrincipalStudentId(Authentication authentication) {
+        return resolveStudentIdForAuthentication(authentication)
+            .orElseThrow(() -> new AccessDeniedException("Authenticated principal is not mapped to an active student"));
     }
 
     public AdminView adminView() {
@@ -554,7 +560,10 @@ public class RecommenderService {
     }
 
     private Optional<Long> resolveCurrentStudentId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return resolveStudentIdForAuthentication(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    private Optional<Long> resolveStudentIdForAuthentication(Authentication auth) {
         String username = auth == null ? null : auth.getName();
         if (!StringUtils.hasText(username)) {
             return Optional.empty();

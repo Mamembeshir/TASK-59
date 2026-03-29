@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @ExtendWith(MockitoExtension.class)
 class GradeEntryServiceTest {
@@ -43,9 +45,15 @@ class GradeEntryServiceTest {
     @Mock
     private GradeLedgerEntryRepository gradeLedgerEntryRepository;
     @Mock
+    private GradeRecalculationRepository gradeRecalculationRepository;
+    @Mock
+    private GradeRecalculationDeltaRepository gradeRecalculationDeltaRepository;
+    @Mock
     private UserIdentityService userIdentityService;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private JdbcTemplate jdbcTemplate;
     @Mock
     private GradeRuleSetEntity ruleSet;
     @Mock
@@ -60,8 +68,11 @@ class GradeEntryServiceTest {
             gradeRuleVersionRepository,
             overrideReasonCodeRepository,
             gradeLedgerEntryRepository,
+            gradeRecalculationRepository,
+            gradeRecalculationDeltaRepository,
             userIdentityService,
             userRepository,
+            jdbcTemplate,
             new ObjectMapper()
         );
     }
@@ -120,5 +131,34 @@ class GradeEntryServiceTest {
             1L, 1L, null, null, "MIDTERM", new BigDecimal("90"), new BigDecimal("100"), "MANUAL_OVERRIDE", null, 10L
         ))).isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Immutable reason code is required");
+    }
+
+    @Test
+    void recomputation_persistsDeterministicDeltas() {
+        stubActiveRules();
+        when(ruleVersion.getId()).thenReturn(2L);
+        when(userIdentityService.resolveCurrentUserId()).thenReturn(Optional.of(7L));
+
+        GradeLedgerEntryEntity entry = new GradeLedgerEntryEntity();
+        entry.setStudentId(1L);
+        entry.setClassId(1L);
+        entry.setAssessmentKey("MIDTERM");
+        entry.setRawScore(new BigDecimal("60.000"));
+        entry.setMaxScore(new BigDecimal("100.000"));
+        entry.setGradeLetter("F");
+        entry.setCreditsEarned(new BigDecimal("0.000"));
+        entry.setGpaPoints(new BigDecimal("0.000"));
+        entry.setRuleVersionId(1L);
+
+        when(gradeLedgerEntryRepository.findByStudentIdAndClassIdOrderByEnteredAtDesc(1L, 1L)).thenReturn(List.of(entry));
+        when(gradeRecalculationRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(gradeRecalculationDeltaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        GradeEntryService.RecalculationResult result = service.recomputeStudentClass(1L, 1L, "POLICY_CHANGE");
+
+        assertThat(result.deltas()).hasSize(1);
+        assertThat(result.deltas().get(0).delta()).containsKey("deltaCredits");
+        verify(gradeRecalculationRepository).save(any());
+        verify(gradeRecalculationDeltaRepository).save(any());
     }
 }

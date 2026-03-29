@@ -1,0 +1,54 @@
+:root {
+  --font-sans: "Trebuchet MS", "Segoe UI", "Liberation Sans", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+
+  --surface-page: #f3f7fc;
+  --surface-shell: #ffffff;
+  --surface-soft: #f8fafc;
+  --surface-muted: #eef3f9;
+
+  --border-default: #dbe4ef;
+  --border-strong: #c2cedc;
+
+  --text-default: #0f1e33;
+  --text-muted: #52627a;
+  --text-soft: #6a7b93;
+
+  --brand-700: #0f5488;
+  --brand-600: #1769aa;
+  --brand-500: #1f7bc7;
+  --brand-100: #dcecff;
+  --brand-50: #eff6ff;
+
+  --success-700: #116341;
+  --success-100: #d6f5e7;
+  --warning-700: #915b08;
+  --warning-100: #fff2d1;
+  --danger-700: #9f2b2b;
+  --danger-100: #fde2e2;
+
+  --shadow-sm: 0 2px 8px rgba(15, 30, 51, 0.08);
+  --shadow-md: 0 10px 24px rgba(15, 30, 51, 0.12);
+  --shadow-lg: 0 20px 40px rgba(15, 30, 51, 0.16);
+
+  --focus-ring: 0 0 0 3px rgba(31, 123, 199, 0.28);
+}

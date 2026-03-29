@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/app-shell :: head('Governance Workspace')}"></head>
+<body th:replace="~{fragments/app-shell :: shell('Governance Workspace', ~{::section})}">
+<section class="page-stack">
+    <article class="card p-5">
+        <h3 class="section-title">CSV Import / Export</h3>
+        <p class="mt-1 text-sm text-slate-600">Use this workflow for offline governance synchronization with robust CSV parsing.</p>
+        <div class="mt-4 flex flex-wrap gap-3">
+            <a class="btn-soft" th:href="@{/governance/export}">Export Students CSV</a>
+            <form method="post" enctype="multipart/form-data" th:action="@{/governance/import}" class="flex flex-wrap items-center gap-2">
+                <input class="field-input" type="file" name="file" accept=".csv,text/csv" required>
+                <label class="text-sm text-slate-600"><input type="checkbox" name="allowUpdate" value="true"> allow updates</label>
+                <button class="btn-primary" type="submit">Import CSV</button>
+            </form>
+        </div>
+        <p class="status alert-success" th:if="${successMessage}" th:text="${successMessage}"></p>
+        <p class="status alert-error" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+    </article>
+
+    <article class="card p-5">
+        <div class="mb-4 flex items-center justify-between gap-2">
+            <h3 class="section-title">Duplicate Detection / Review</h3>
+            <form method="post" th:action="@{/governance/duplicates/scan}">
+                <button class="btn-primary" type="submit">Scan Duplicates</button>
+            </form>
+        </div>
+        <p class="empty-state" th:if="${#lists.isEmpty(duplicates)}">No duplicate candidates found yet.</p>
+        <div class="overflow-x-auto" th:if="${!#lists.isEmpty(duplicates)}">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Mode</th>
+                    <th>Source</th>
+                    <th>Matched</th>
+                    <th>Score</th>
+                    <th>Matched On</th>
+                    <th>Action</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="d : ${duplicates}">
+                    <td th:text="${d.id}">1</td>
+                    <td th:text="${d.matchMode}">EXACT</td>
+                    <td th:text="${d.sourceEntityId}">10</td>
+                    <td th:text="${d.matchedEntityId}">11</td>
+                    <td th:text="${d.score}">100</td>
+                    <td th:text="${d.matchedOn}">name,date_of_birth</td>
+                    <td>
+                        <form method="post" th:action="@{/governance/duplicates/{id}/review(id=${d.id})}">
+                            <button class="btn-soft" type="submit">Mark Reviewed</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <article class="card p-5">
+        <div class="mb-4 flex items-center justify-between gap-2">
+            <h3 class="section-title">Consistency Findings</h3>
+            <form method="post" th:action="@{/governance/consistency/scan}">
+                <button class="btn-primary" type="submit">Run Consistency Scan</button>
+            </form>
+        </div>
+        <p class="empty-state" th:if="${#lists.isEmpty(consistencyIssues)}">No consistency issues found.</p>
+        <div class="overflow-x-auto" th:if="${!#lists.isEmpty(consistencyIssues)}">
+            <table class="data-table">
+                <thead>
+                <tr><th>ID</th><th>Type</th><th>Entity</th><th>Details</th><th>Detected</th><th>Resolved</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="c : ${consistencyIssues}">
+                    <td th:text="${c.id}">1</td>
+                    <td th:text="${c.issueType}">TYPE</td>
+                    <td th:text="${c.entityType + '#' + c.entityId}">ENTITY</td>
+                    <td><code th:text="${c.issueDetails}">details</code></td>
+                    <td th:text="${#temporals.format(c.detectedAt, 'yyyy-MM-dd HH:mm:ss')}">2026-01-01</td>
+                    <td th:text="${c.resolved}">false</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <article class="card p-5">
+        <h3 class="section-title">Change History</h3>
+        <form method="get" th:action="@{/governance}" class="mt-3 flex flex-wrap items-center gap-2">
+            <input class="field-input" type="number" name="historyStudentId" placeholder="Student ID" required>
+            <button class="btn-primary" type="submit">Load History</button>
+        </form>
+        <p class="empty-state mt-3" th:if="${historyStudentId == null}">Select a student to view change history.</p>
+        <p class="empty-state mt-3" th:if="${historyStudentId != null and #lists.isEmpty(changeHistory)}">No change history found for selected student.</p>
+        <div class="mt-3 overflow-x-auto" th:if="${!#lists.isEmpty(changeHistory)}">
+            <table class="data-table">
+                <thead>
+                <tr><th>When</th><th>Operation</th><th>Actor</th><th>Reason</th><th>Old</th><th>New</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="h : ${changeHistory}">
+                    <td th:text="${#temporals.format(h.changedAt, 'yyyy-MM-dd HH:mm:ss')}">2026-01-01</td>
+                    <td th:text="${h.operation}">UPDATE</td>
+                    <td th:text="${h.changedBy}">1</td>
+                    <td th:text="${h.reasonCode}">STATUS_UPDATE</td>
+                    <td><code th:text="${h.oldData}">old</code></td>
+                    <td><code th:text="${h.newData}">new</code></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <article class="card p-5">
+        <div class="mb-4 flex items-center justify-between gap-2">
+            <h3 class="section-title">Recycle Bin</h3>
+            <form method="post" th:action="@{/governance/recycle/purge}">
+                <button class="btn-soft" type="submit">Purge Expired</button>
+            </form>
+        </div>
+        <p class="empty-state" th:if="${#lists.isEmpty(recycleBin)}">Recycle bin is currently empty.</p>
+        <div class="overflow-x-auto" th:if="${!#lists.isEmpty(recycleBin)}">
+            <table class="data-table">
+                <thead>
+                <tr><th>ID</th><th>Entity</th><th>Entity ID</th><th>Deleted At</th><th>Purge After</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${recycleBin}">
+                    <td th:text="${r.id}">1</td>
+                    <td th:text="${r.entityType}">STUDENT</td>
+                    <td th:text="${r.entityId}">10</td>
+                    <td th:text="${#temporals.format(r.deletedAt, 'yyyy-MM-dd HH:mm:ss')}">2026-01-01</td>
+                    <td th:text="${#temporals.format(r.purgeAfter, 'yyyy-MM-dd HH:mm:ss')}">2026-01-31</td>
+                    <td>
+                        <form method="post" th:action="@{/governance/recycle/{id}/restore(id=${r.id})}">
+                            <button class="btn-primary" type="submit">Restore</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </article>
+</section>
+</body>
+</html>

@@ -2,7 +2,7 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/app-shell :: head('Student Lifecycle')}"></head>
 <body th:replace="~{fragments/app-shell :: shell('Student Lifecycle', ~{::section})}">
-<section class="space-y-6">
+<section class="page-stack">
     <article class="card p-5">
         <form method="get" th:action="@{/student}" class="grid gap-3 md:grid-cols-[1fr_auto]">
             <div>
@@ -13,8 +13,8 @@
         </form>
     </article>
 
-    <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Create Student Profile</h3>
+    <article class="card p-5" th:if="${canCreateStudent}">
+        <h3 class="section-title">Create Student Profile</h3>
         <form method="post" th:action="@{/student}" class="grid gap-4 md:grid-cols-2">
             <label><span class="field-label">Student No</span><input class="field-input" type="text" name="studentNo" required></label>
             <label><span class="field-label">First Name</span><input class="field-input" type="text" name="firstName" required></label>
@@ -32,7 +32,7 @@
     </article>
 
     <article class="card p-5">
-        <h3 class="mb-4 text-lg font-bold">Student Directory</h3>
+        <h3 class="section-title">Student Directory</h3>
         <div class="overflow-x-auto">
             <table class="data-table">
                 <thead><tr><th>ID</th><th>Student No</th><th>Name</th><th>Status</th><th>Action</th></tr></thead>
