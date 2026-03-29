@@ -22,10 +22,12 @@ The final step keeps all previously delivered modules integrated through shared 
 1. Student lifecycle
    - Student and class registration data feeds grade and recommender contexts.
    - Student identity is reused by store campaign purchasing and recommendation retrieval.
+   - Object-level authorization enforces that `ROLE_STUDENT` can access only its own student record.
 
 2. Grades ledger
    - Rule-versioned grading logic resolves active rulesets and computes deterministic impact.
    - Append-only ledger supports entry/edit/recalculation/manual override operations.
+   - Dedicated recomputation audit persists runs in `grade_recalculations` and per-entry deltas in `grade_recalculation_deltas`.
 
 3. Inventory
    - Unit conversion and ingredient modeling normalize stock handling.
@@ -42,14 +44,20 @@ The final step keeps all previously delivered modules integrated through shared 
 
 6. Recommender
    - Event ingestion, model versioning, rollback, and user-facing recommendation APIs.
-   - Store and dashboard surfaces consume recommendation outputs.
+    - Store and dashboard surfaces consume recommendation outputs.
+
+7. Governance
+   - CSV student import/export with tracked `bulk_jobs` execution summaries.
+   - Duplicate detection stores exact/fuzzy candidates in `duplicate_detection_results` (name + DOB logic).
+   - Change history persisted for create/update/delete/restore in `change_history`.
+   - Recycle bin snapshots with restore + 30-day purge metadata in `recycle_bin`.
 
 ## Security and compliance posture
 
 - Spring Security form login + RBAC route guards per functional module.
 - Internal API client key/secret authentication for `/api/internal/**`.
 - Request audit filter and operation logging retained.
-- Existing sensitive-field encryption behavior remains unchanged.
+- Existing sensitive-field encryption behavior remains unchanged, but runtime now requires `APP_ENCRYPTION_AES_KEY_BASE64` with no committed default.
 
 ## UI design decisions
 
@@ -68,3 +76,4 @@ The final step keeps all previously delivered modules integrated through shared 
   - security filter credential behavior
 - API integration tests (MockMvc) validate representative contracts across major APIs.
 - Thymeleaf flow tests (MockMvc web-layer) validate login/dashboard and key module routes.
+- Security integration tests run with the real filter chain enabled and cover 401/403/internal-client expiry + cross-student denial.

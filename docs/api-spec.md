@@ -60,6 +60,9 @@
 - `POST /api/grades/preview`
   - Body: grade entry request (student, class, assessment, raw/max score)
   - Response: computed percent/grade/credits/GPA impact
+- `POST /api/grades/recompute`
+  - Body: `{ studentId, classId, reasonCode }`
+  - Response: recomputation id + deterministic hash + persisted delta summaries
 
 ### Inventory
 
@@ -88,3 +91,18 @@
   - Body: event payload (`eventType`, `studentId`, `itemType`, `itemId`, `eventValue`, `occurredAt`, `source`)
 - Admin/model operations (role restricted):
   - train/incremental/rollback endpoints under `/api/recommender/**`
+
+### Governance
+
+- `GET /api/governance/students/export`
+  - Response: CSV export for active student records
+- `POST /api/governance/students/import?allowUpdate={true|false}`
+  - Body: CSV text with header
+  - Response: bulk-job summary (`createdRows`, `updatedRows`, `failedRows`, `status`)
+- `POST /api/governance/students/duplicates/scan`
+  - Response: latest exact/fuzzy duplicate candidates by name + DOB
+- `GET /api/governance/students/{studentId}/history`
+  - Response: `change_history` entries (students can only read own history)
+- `GET /api/governance/recycle-bin`
+- `POST /api/governance/recycle-bin/{recycleId}/restore`
+- `POST /api/governance/recycle-bin/purge-expired`
