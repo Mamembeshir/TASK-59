@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InstituteOps Login</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css">
+</head>
+<body>
+<main class="shell auth-shell">
+    <h1>InstituteOps</h1>
+    <p class="subtitle">Offline administration console</p>
+    <form method="post" th:action="@{/login}" class="auth-form">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+        <button type="submit">Sign In</button>
+    </form>
+    <p th:if="${param.error}" class="status error">Invalid username or password.</p>
+    <p th:if="${param.logout}" class="status">Signed out.</p>
+</main>
+</body>
+</html>

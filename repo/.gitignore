@@ -1,0 +1,48 @@
+# Build artifacts
+target/
+build/
+out/
+dist/
+
+# Maven/Gradle metadata
+.mvn/wrapper/maven-wrapper.jar
+.gradle/
+
+# Java artifacts
+*.class
+*.jar
+*.war
+*.ear
+*.jpi
+
+# Logs and runtime files
+*.log
+logs/
+*.pid
+*.seed
+
+# IDE/editor metadata
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.swp
+
+# Docker local volumes/data
+mysql_data/
+uploads_data/

@@ -1,0 +1,48 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: instituteops-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: instituteops
+      MYSQL_USER: instituteops
+      MYSQL_PASSWORD: instituteops
+      MYSQL_ROOT_PASSWORD: root
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: instituteops-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/instituteops?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: instituteops
+      SPRING_DATASOURCE_PASSWORD: instituteops
+      APP_UPLOAD_BASE_PATH: /uploads
+      APP_ENCRYPTION_AES_KEY_BASE64: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/uploads
+
+volumes:
+  mysql_data:
+  uploads_data:

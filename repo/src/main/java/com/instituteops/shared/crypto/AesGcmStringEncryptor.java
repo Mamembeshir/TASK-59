@@ -1,0 +1,75 @@
+package com.instituteops.shared.crypto;
+
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Base64;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import org.springframework.stereotype.Component;
+
+@Component
+public class AesGcmStringEncryptor {
+
+    private static final String ALGORITHM = "AES/GCM/NoPadding";
+    private static final int GCM_TAG_LENGTH_BITS = 128;
+    private static final int IV_LENGTH_BYTES = 12;
+    private static final int AES_256_KEY_BYTES = 32;
+
+    private final byte[] key;
+    private final SecureRandom secureRandom = new SecureRandom();
+
+    public AesGcmStringEncryptor(EncryptionProperties encryptionProperties) {
+        if (encryptionProperties.getAesKeyBase64() == null || encryptionProperties.getAesKeyBase64().isBlank()) {
+            throw new IllegalStateException("Missing app.encryption.aes-key-base64 configuration");
+        }
+        byte[] decoded = Base64.getDecoder().decode(encryptionProperties.getAesKeyBase64());
+        if (decoded.length != AES_256_KEY_BYTES) {
+            throw new IllegalStateException("app.encryption.aes-key-base64 must decode to exactly 32 bytes for AES-256");
+        }
+        this.key = decoded;
+    }
+
+    public byte[] encrypt(String plainText) {
+        if (plainText == null) {
+            return null;
+        }
+        try {
+            byte[] iv = new byte[IV_LENGTH_BYTES];
+            secureRandom.nextBytes(iv);
+
+            Cipher cipher = Cipher.getInstance(ALGORITHM);
+            cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
+            byte[] cipherText = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
+
+            byte[] payload = new byte[iv.length + cipherText.length];
+            System.arraycopy(iv, 0, payload, 0, iv.length);
+            System.arraycopy(cipherText, 0, payload, iv.length, cipherText.length);
+            return payload;
+        } catch (GeneralSecurityException ex) {
+            throw new IllegalStateException("Unable to encrypt value", ex);
+        }
+    }
+
+    public String decrypt(byte[] encryptedPayload) {
+        if (encryptedPayload == null) {
+            return null;
+        }
+        if (encryptedPayload.length <= IV_LENGTH_BYTES) {
+            throw new IllegalStateException("Encrypted payload is invalid");
+        }
+        try {
+            byte[] iv = Arrays.copyOfRange(encryptedPayload, 0, IV_LENGTH_BYTES);
+            byte[] cipherText = Arrays.copyOfRange(encryptedPayload, IV_LENGTH_BYTES, encryptedPayload.length);
+
+            Cipher cipher = Cipher.getInstance(ALGORITHM);
+            cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
+            byte[] plainBytes = cipher.doFinal(cipherText);
+            return new String(plainBytes, StandardCharsets.UTF_8);
+        } catch (GeneralSecurityException ex) {
+            throw new IllegalStateException("Unable to decrypt value", ex);
+        }
+    }
+}

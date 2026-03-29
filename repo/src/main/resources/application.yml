@@ -1,0 +1,46 @@
+server:
+  port: 8080
+  address: 0.0.0.0
+
+spring:
+  application:
+    name: instituteops
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/instituteops?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:instituteops}
+    password: ${SPRING_DATASOURCE_PASSWORD:instituteops}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+  thymeleaf:
+    cache: false
+
+app:
+  upload:
+    base-path: ${APP_UPLOAD_BASE_PATH:/uploads}
+  encryption:
+    aes-key-base64: ${APP_ENCRYPTION_AES_KEY_BASE64:MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
