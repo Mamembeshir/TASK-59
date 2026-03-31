@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 @ExtendWith(MockitoExtension.class)
 class GradeEntryServiceTest {
@@ -53,8 +52,6 @@ class GradeEntryServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
-    private JdbcTemplate jdbcTemplate;
-    @Mock
     private GradeRuleSetEntity ruleSet;
     @Mock
     private GradeRuleVersionEntity ruleVersion;
@@ -72,7 +69,6 @@ class GradeEntryServiceTest {
             gradeRecalculationDeltaRepository,
             userIdentityService,
             userRepository,
-            jdbcTemplate,
             new ObjectMapper()
         );
     }

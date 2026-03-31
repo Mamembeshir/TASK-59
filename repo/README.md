@@ -1,79 +1,42 @@
-# InstituteOps (Final Step 11/11)
+# InstituteOps
 
-InstituteOps is a modular Spring Boot 3.3 (Java 21) platform that now includes full student lifecycle operations, grades ledgering, inventory + procurement workflows, store/group-buy campaigns, and recommender features, delivered with Thymeleaf UI and API coverage.
+Docker-first setup for the full InstituteOps stack (app + MySQL + automated tests).
 
-## Services
-
-- `app`: Spring Boot backend + Thymeleaf frontend (`http://localhost:8080`)
-- `mysql`: MySQL 8.4 (`localhost:3306`)
-- `flyway`: migration bootstrap job
-- `uploads` volume: persistent file storage mounted at `/uploads`
-- `db_data` volume: persistent MySQL data
-
-## Start the full stack
+## Start app + database + automated tests
 
 ```bash
 docker compose up --build
 ```
 
-`docker compose` now includes a built-in development encryption key so no `.env` setup is required for local startup. To override it explicitly, set `APP_ENCRYPTION_AES_KEY_BASE64` before running compose.
+What this starts:
 
-If you need a clean DB reset:
+- `mysql`: MySQL 8.4
+- `app`: Spring Boot application at `http://localhost:8080`
+- `tests`: Maven unit + integration test run (`verify -Pintegration-tests`)
+
+`tests` service logs stream directly in terminal during `docker compose up` (Surefire/Failsafe output is visible).
+
+## Reset database and rerun
 
 ```bash
 docker compose down -v
 docker compose up --build
 ```
 
-## Verification checklist
+## Test log viewing
 
-1. Open `http://localhost:8080/login` and sign in with one of the seeded users below.
-2. Confirm dashboard loads and module navigation works:
-   - Student lifecycle (`/student`)
-   - Grades (`/instructor/grades`)
-   - Inventory (`/inventory`)
-   - Procurement (`/procurement`)
-   - Store manager (`/store`) and student (`/store/student`)
-   - Recommender admin (`/admin/recommender`)
-3. Verify internal API auth:
+If you want to re-follow only test output:
 
 ```bash
-docker compose exec mysql mysql -uroot -proot -Dinstituteops -e "UPDATE sync_config SET enabled=TRUE, lan_only=TRUE WHERE sync_name='LAN_OPTIONAL_SYNC';"
-curl -H "X-API-KEY: local-sync-client" -H "X-API-SECRET: internal-secret" http://localhost:8080/api/internal/ping
+docker compose logs -f tests
 ```
 
-Expected from LAN/local address: `pong`.
+## URLs
 
-If `sync_config.enabled` is `FALSE` (default), `/api/internal/**` is blocked.
+- App login page: `http://localhost:8080/login`
+- API example: `http://localhost:8080/api/internal/ping`
 
-## Run tests locally
-
-Run all backend and web-layer tests (required acceptance verification):
-
-```bash
-./mvnw clean test
-```
-
-This includes:
-
-- backend unit tests (grade calculation, inventory transactions, procurement flow, group-buy rules, recommender, security filter behavior)
-- web-layer contract tests via Spring MockMvc slices
-- Thymeleaf route rendering tests for login/dashboard/module pages
-- security integration tests with real filter chain (`SecurityIntegrationTest`)
-
-Run only frontend flow tests:
-
-```bash
-./mvnw -Dtest=ThymeleafUiFlowWebMvcTest,ApiIntegrationWebMvcTest test
-```
-
-Run only security integration tests (real filter chain enabled):
-
-```bash
-./mvnw -Dtest=SecurityIntegrationTest test
-```
-
-## Seeded users
+## Login credentials
 
 - `sysadmin` / `Admin@123`
 - `registrar` / `Registrar@123`

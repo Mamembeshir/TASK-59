@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.instituteops.audit.AuditLogService;
 import com.instituteops.audit.RequestAuditFilter;
 import com.instituteops.governance.domain.GovernanceService;
+import com.instituteops.grades.domain.GradeAuthorizationService;
 import com.instituteops.grades.domain.GradeEntryController;
 import com.instituteops.grades.domain.GradeEntryService;
 import com.instituteops.inventory.domain.InventoryController;
@@ -59,6 +60,8 @@ class ThymeleafUiFlowWebMvcTest {
     private StudentModuleService studentModuleService;
     @MockBean
     private GradeEntryService gradeEntryService;
+    @MockBean
+    private GradeAuthorizationService gradeAuthorizationService;
     @MockBean
     private InventoryModuleService inventoryModuleService;
     @MockBean

@@ -33,6 +33,7 @@ public class ProcurementService {
     private final UserIdentityService userIdentityService;
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final ProcurementUnitConversionService unitConversionService;
 
     public ProcurementService(
         SupplierRepository supplierRepository,
@@ -47,7 +48,8 @@ public class ProcurementService {
         GoodsReceiptLineRepository goodsReceiptLineRepository,
         UserIdentityService userIdentityService,
         UserRepository userRepository,
-        JdbcTemplate jdbcTemplate
+        JdbcTemplate jdbcTemplate,
+        ProcurementUnitConversionService unitConversionService
     ) {
         this.supplierRepository = supplierRepository;
         this.supplierItemRepository = supplierItemRepository;
@@ -62,6 +64,7 @@ public class ProcurementService {
         this.userIdentityService = userIdentityService;
         this.userRepository = userRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.unitConversionService = unitConversionService;
     }
 
     public List<SupplierEntity> suppliers() {
@@ -212,7 +215,7 @@ public class ProcurementService {
             BigDecimal unitPrice = price;
             if (supplierItem != null && supplierItem.getPackSize() != null && supplierItem.getPackUnitId() != null
                 && supplierItem.getPackSize().compareTo(BigDecimal.ZERO) > 0) {
-                orderedQty = convertQuantity(reqLine.getRequestedQty(), reqLine.getUnitId(), supplierItem.getPackUnitId());
+                orderedQty = unitConversionService.convertQuantity(reqLine.getRequestedQty(), reqLine.getUnitId(), supplierItem.getPackUnitId());
                 unitId = supplierItem.getPackUnitId();
                 unitPrice = price.divide(supplierItem.getPackSize(), 4, RoundingMode.HALF_UP);
             }
@@ -344,9 +347,9 @@ public class ProcurementService {
     }
 
     private void insertInventoryBatchAndTransaction(PurchaseOrderEntity po, PurchaseOrderLineEntity poLine, ReceiveLine line, BigDecimal acceptedQty) {
-        Long ingredientDefaultUnitId = ingredientDefaultUnitId(poLine.getIngredientId());
-        BigDecimal normalizedQty = convertQuantity(acceptedQty, poLine.getUnitId(), ingredientDefaultUnitId);
-        BigDecimal normalizedUnitCost = normalizeUnitCost(poLine.getUnitPrice(), poLine.getUnitId(), ingredientDefaultUnitId);
+        Long ingredientDefaultUnitId = unitConversionService.ingredientDefaultUnitId(poLine.getIngredientId());
+        BigDecimal normalizedQty = unitConversionService.convertQuantity(acceptedQty, poLine.getUnitId(), ingredientDefaultUnitId);
+        BigDecimal normalizedUnitCost = unitConversionService.normalizeUnitCost(poLine.getUnitPrice(), poLine.getUnitId(), ingredientDefaultUnitId);
 
         Long supplierId = po.getSupplierId();
         jdbcTemplate.update(
@@ -382,59 +385,6 @@ public class ProcurementService {
             "Auto-posted from goods receipt",
             currentUserId()
         );
-    }
-
-    private Long ingredientDefaultUnitId(Long ingredientId) {
-        Long unitId = jdbcTemplate.queryForObject(
-            "SELECT default_unit_id FROM ingredients WHERE id = ?",
-            Long.class,
-            ingredientId
-        );
-        if (unitId == null) {
-            throw new IllegalArgumentException("Ingredient not found for inventory posting");
-        }
-        return unitId;
-    }
-
-    private BigDecimal normalizeUnitCost(BigDecimal unitCost, Long fromUnitId, Long toUnitId) {
-        BigDecimal factor = conversionFactor(fromUnitId, toUnitId);
-        return unitCost.divide(factor, 4, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal convertQuantity(BigDecimal qty, Long fromUnitId, Long toUnitId) {
-        if (qty == null || fromUnitId == null || toUnitId == null) {
-            throw new IllegalArgumentException("Quantity and unit ids are required");
-        }
-        if (fromUnitId.equals(toUnitId)) {
-            return qty.setScale(3, RoundingMode.HALF_UP);
-        }
-        BigDecimal factor = conversionFactor(fromUnitId, toUnitId);
-        return qty.multiply(factor).setScale(3, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal conversionFactor(Long fromUnitId, Long toUnitId) {
-        if (fromUnitId.equals(toUnitId)) {
-            return BigDecimal.ONE;
-        }
-        List<BigDecimal> direct = jdbcTemplate.query(
-            "SELECT factor FROM unit_conversions WHERE from_unit_id = ? AND to_unit_id = ? ORDER BY id DESC LIMIT 1",
-            (rs, rowNum) -> rs.getBigDecimal("factor"),
-            fromUnitId,
-            toUnitId
-        );
-        if (!direct.isEmpty()) {
-            return direct.getFirst();
-        }
-        List<BigDecimal> reverse = jdbcTemplate.query(
-            "SELECT factor FROM unit_conversions WHERE from_unit_id = ? AND to_unit_id = ? ORDER BY id DESC LIMIT 1",
-            (rs, rowNum) -> rs.getBigDecimal("factor"),
-            toUnitId,
-            fromUnitId
-        );
-        if (!reverse.isEmpty()) {
-            return BigDecimal.ONE.divide(reverse.getFirst(), 6, RoundingMode.HALF_UP);
-        }
-        throw new IllegalArgumentException("No conversion path between selected units");
     }
 
     private void insertAlertIfMissing(String alertType, Long ingredientId, String message) {

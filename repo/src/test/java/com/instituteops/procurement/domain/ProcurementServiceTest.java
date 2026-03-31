@@ -45,6 +45,8 @@ class ProcurementServiceTest {
     private UserRepository userRepository;
     @Mock
     private JdbcTemplate jdbcTemplate;
+    @Mock
+    private ProcurementUnitConversionService unitConversionService;
 
     private ProcurementService service;
 
@@ -63,7 +65,8 @@ class ProcurementServiceTest {
             goodsReceiptLineRepository,
             userIdentityService,
             userRepository,
-            jdbcTemplate
+            jdbcTemplate,
+            unitConversionService
         );
     }
 

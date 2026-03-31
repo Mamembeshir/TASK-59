@@ -152,6 +152,7 @@ class RecommenderServiceTest {
 
         assertThat(result.recommendationsGenerated()).isGreaterThan(0);
         assertThat(result.metrics()).containsEntry("algorithmFamily", "USER_CF");
+        assertThat(result.metrics()).containsEntry("timeDecayHalfLifeDays", 90);
 
         ArgumentCaptor<List<RecommenderRecommendationEntity>> recCaptor = ArgumentCaptor.forClass(List.class);
         verify(recommendationRepository).saveAll(recCaptor.capture());
@@ -163,6 +164,37 @@ class RecommenderServiceTest {
         assertThat(byStudent.get(1L)).isNotNull();
         assertThat(byStudent.get(1L).stream().map(RecommenderRecommendationEntity::getItemId)).contains(103L);
         assertThat(byStudent.get(1L).stream().map(RecommenderRecommendationEntity::getItemId)).doesNotContain(101L, 102L);
+    }
+
+    @Test
+    void trainNewVersion_defaultsHalfLifeTo14DaysWhenModelValueMissing() {
+        RecommenderModelEntity model = new RecommenderModelEntity();
+        setId(model, 11L);
+        model.setModelCode("USER_CF_DEFAULT_HALF_LIFE");
+        model.setAlgorithmFamily("USER_CF");
+        model.setSimilarityMetric("COSINE");
+        model.setTimeDecayHalfLifeDays(null);
+        model.setPopularityPenalty(new BigDecimal("0.01"));
+
+        when(modelRepository.findByModelCode("USER_CF_DEFAULT_HALF_LIFE")).thenReturn(Optional.of(model));
+        when(versionRepository.findByModelIdOrderByVersionNoDesc(11L)).thenReturn(List.of());
+        when(userIdentityService.resolveCurrentUserId()).thenReturn(Optional.of(7L));
+
+        RecommenderModelVersionEntity running = new RecommenderModelVersionEntity();
+        setId(running, 110L);
+        running.setModelId(11L);
+        running.setVersionNo(1);
+
+        when(versionRepository.save(any())).thenReturn(running);
+        when(recommendationRepository.saveAll(any())).thenAnswer(i -> i.getArgument(0));
+
+        RecommenderEventEntity e1 = event(11L, 1L, 201L, "2.0");
+        RecommenderEventEntity e2 = event(12L, 2L, 202L, "2.0");
+        when(eventRepository.findByOccurredAtBetweenOrderByOccurredAtAsc(any(), any())).thenReturn(List.of(e1, e2));
+
+        RecommenderService.TrainingResult result = service.trainNewVersion("USER_CF_DEFAULT_HALF_LIFE", 2);
+
+        assertThat(result.metrics()).containsEntry("timeDecayHalfLifeDays", 14);
     }
 
     private static RecommenderEventEntity event(Long id, Long studentId, Long itemId, String value) {

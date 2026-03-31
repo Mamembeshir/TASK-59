@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.instituteops.audit.AuditLogService;
 import com.instituteops.audit.RequestAuditFilter;
+import com.instituteops.grades.domain.GradeAuthorizationService;
 import com.instituteops.grades.domain.GradeEntryController;
 import com.instituteops.grades.domain.GradeEntryService;
 import com.instituteops.inventory.domain.InventoryController;
@@ -43,7 +44,7 @@ import org.springframework.test.web.servlet.MockMvc;
     RecommenderController.class
 })
 @AutoConfigureMockMvc(addFilters = false)
-class ApiIntegrationWebMvcTest {
+class ApiContractWebMvcTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -53,6 +54,8 @@ class ApiIntegrationWebMvcTest {
 
     @MockBean
     private GradeEntryService gradeEntryService;
+    @MockBean
+    private GradeAuthorizationService gradeAuthorizationService;
     @MockBean
     private InventoryModuleService inventoryModuleService;
     @MockBean

@@ -33,6 +33,7 @@ import org.springframework.util.StringUtils;
 public class RecommenderService {
 
     private static final int DEFAULT_TOP_K = 5;
+    private static final int DEFAULT_HALF_LIFE_DAYS = 14;
 
     private final RecommenderEventRepository eventRepository;
     private final RecommenderModelRepository modelRepository;
@@ -96,7 +97,7 @@ public class RecommenderService {
         version.setConfigJson(writeJson(Map.of(
             "algorithmFamily", model.getAlgorithmFamily(),
             "similarityMetric", model.getSimilarityMetric(),
-            "timeDecayHalfLifeDays", model.getTimeDecayHalfLifeDays(),
+            "timeDecayHalfLifeDays", resolveHalfLifeDays(model.getTimeDecayHalfLifeDays()),
             "popularityPenalty", model.getPopularityPenalty(),
             "topK", topK == null || topK < 1 ? DEFAULT_TOP_K : topK
         )));
@@ -253,7 +254,7 @@ public class RecommenderService {
     ) {
         Map<String, Object> cfg = parseJson(version.getConfigJson());
         int topK = ((Number) cfg.getOrDefault("topK", DEFAULT_TOP_K)).intValue();
-        int halfLife = ((Number) cfg.getOrDefault("timeDecayHalfLifeDays", model.getTimeDecayHalfLifeDays())).intValue();
+        int halfLife = resolveHalfLifeDays(asInteger(cfg.get("timeDecayHalfLifeDays"), model.getTimeDecayHalfLifeDays()));
         BigDecimal popularityPenalty = toBigDecimal(cfg.getOrDefault("popularityPenalty", model.getPopularityPenalty()));
 
         List<RecommenderEventEntity> events = eventRepository.findByOccurredAtBetweenOrderByOccurredAtAsc(version.getTrainedFrom(), LocalDateTime.now());
@@ -317,9 +318,31 @@ public class RecommenderService {
         metrics.put("studentsScored", targets.size());
         metrics.put("recommendations", recs.size());
         metrics.put("avgScore", BigDecimal.valueOf(avgScore).setScale(6, RoundingMode.HALF_UP));
+        metrics.put("timeDecayHalfLifeDays", halfLife);
         metrics.put("algorithmFamily", model.getAlgorithmFamily());
         metrics.put("similarityMetric", model.getSimilarityMetric());
         return new BuildResult(recs, metrics);
+    }
+
+    private static Integer asInteger(Object value, Integer fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
+    }
+
+    private static int resolveHalfLifeDays(Integer configuredValue) {
+        if (configuredValue == null || configuredValue < 1) {
+            return DEFAULT_HALF_LIFE_DAYS;
+        }
+        return configuredValue;
     }
 
     private Map<ItemKey, Double> userCfScores(

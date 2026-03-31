@@ -37,12 +37,34 @@ services:
       SPRING_DATASOURCE_USERNAME: instituteops
       SPRING_DATASOURCE_PASSWORD: instituteops
       APP_UPLOAD_BASE_PATH: /uploads
-      APP_ENCRYPTION_AES_KEY_BASE64: aW5zdGl0dXRlb3BzLWRldi1kZWZhdWx0LWFlcy1rZXk=
+      APP_ENCRYPTION_AES_KEY_BASE64: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
     ports:
       - "8080:8080"
     volumes:
       - uploads_data:/uploads
 
+  tests:
+    image: maven:3.9.9-eclipse-temurin-21
+    container_name: instituteops-tests
+    working_dir: /workspace
+    depends_on:
+      mysql:
+        condition: service_healthy
+      app:
+        condition: service_started
+    environment:
+      TEST_DB_HOST: mysql
+      TEST_DB_PORT: 3306
+      TEST_DB_NAME: instituteops
+      TEST_DB_USER: instituteops
+      TEST_DB_PASSWORD: instituteops
+      APP_ENCRYPTION_AES_KEY_BASE64: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+    volumes:
+      - ./:/workspace
+      - maven_cache:/root/.m2
+    command: ./mvnw -B verify -Pintegration-tests
+
 volumes:
   mysql_data:
   uploads_data:
+  maven_cache:

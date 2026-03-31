@@ -18,10 +18,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -38,7 +34,6 @@ public class GradeEntryService {
     private final GradeRecalculationDeltaRepository gradeRecalculationDeltaRepository;
     private final UserIdentityService userIdentityService;
     private final UserRepository userRepository;
-    private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
     public GradeEntryService(
@@ -50,7 +45,6 @@ public class GradeEntryService {
         GradeRecalculationDeltaRepository gradeRecalculationDeltaRepository,
         UserIdentityService userIdentityService,
         UserRepository userRepository,
-        JdbcTemplate jdbcTemplate,
         ObjectMapper objectMapper
     ) {
         this.gradeRuleSetRepository = gradeRuleSetRepository;
@@ -61,26 +55,7 @@ public class GradeEntryService {
         this.gradeRecalculationDeltaRepository = gradeRecalculationDeltaRepository;
         this.userIdentityService = userIdentityService;
         this.userRepository = userRepository;
-        this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
-    }
-
-    public void assertCanManageGradeEntry(Authentication authentication, Long studentId, Long classId) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AccessDeniedException("Authentication required");
-        }
-        if (hasAnyRole(authentication, "ROLE_SYSTEM_ADMIN", "ROLE_REGISTRAR_FINANCE_CLERK")) {
-            return;
-        }
-        if (hasAnyRole(authentication, "ROLE_INSTRUCTOR")) {
-            Long instructorUserId = userRepository.findIdByUsername(authentication.getName())
-                .orElseThrow(() -> new AccessDeniedException("Instructor account is not linked to an active user"));
-            if (instructorCanManageGradeTarget(instructorUserId, studentId, classId)) {
-                return;
-            }
-            throw new AccessDeniedException("Instructor can only manage grades for assigned students/classes");
-        }
-        throw new AccessDeniedException("Role is not permitted to manage grades");
     }
 
     public List<GradeLedgerEntryEntity> latestLedger() {
@@ -324,44 +299,6 @@ public class GradeEntryService {
 
     private Long currentUserId() {
         return userIdentityService.resolveCurrentUserId().orElseGet(() -> userRepository.findIdByUsername("sysadmin").orElse(1L));
-    }
-
-    private boolean instructorCanManageGradeTarget(Long instructorUserId, Long studentId, Long classId) {
-        if (instructorUserId == null || studentId == null || classId == null) {
-            return false;
-        }
-        Integer count = jdbcTemplate.queryForObject(
-            """
-                SELECT COUNT(*)
-                FROM enrollments e
-                JOIN classes c ON c.id = e.class_id
-                WHERE e.student_id = ?
-                  AND e.class_id = ?
-                  AND e.deleted_at IS NULL
-                  AND e.enrollment_status IN ('ENROLLED', 'WAITLISTED', 'COMPLETED')
-                  AND c.instructor_user_id = ?
-            """,
-            Integer.class,
-            studentId,
-            classId,
-            instructorUserId
-        );
-        return count != null && count > 0;
-    }
-
-    private static boolean hasAnyRole(Authentication authentication, String... roles) {
-        if (authentication == null) {
-            return false;
-        }
-        java.util.Set<String> granted = authentication.getAuthorities().stream()
-            .map(GrantedAuthority::getAuthority)
-            .collect(java.util.stream.Collectors.toSet());
-        for (String role : roles) {
-            if (granted.contains(role)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private String deterministicHash(Long ruleVersionId, List<GradeLedgerEntryEntity> entries) {

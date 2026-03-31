@@ -18,8 +18,6 @@ public class AesGcmStringEncryptor {
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH_BITS = 128;
     private static final int IV_LENGTH_BYTES = 12;
-    private static final int AES_128_KEY_BYTES = 16;
-    private static final int AES_192_KEY_BYTES = 24;
     private static final int AES_256_KEY_BYTES = 32;
 
     private static final Logger log = LoggerFactory.getLogger(AesGcmStringEncryptor.class);
@@ -37,8 +35,8 @@ public class AesGcmStringEncryptor {
         } catch (IllegalArgumentException ex) {
             throw new IllegalStateException("app.encryption.aes-key-base64 must be valid Base64", ex);
         }
-        if (decoded.length != AES_128_KEY_BYTES && decoded.length != AES_192_KEY_BYTES && decoded.length != AES_256_KEY_BYTES) {
-            throw new IllegalStateException("app.encryption.aes-key-base64 must decode to 16, 24, or 32 bytes");
+        if (decoded.length != AES_256_KEY_BYTES) {
+            throw new IllegalStateException("app.encryption.aes-key-base64 must decode to exactly 32 bytes (AES-256)");
         }
         log.info("Initialized AES-GCM encryptor with {}-bit key", decoded.length * 8);
         this.key = decoded;

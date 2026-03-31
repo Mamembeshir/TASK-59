@@ -13,7 +13,7 @@ INSERT INTO recommender_models (
     active,
     created_by
 )
-SELECT 'USER_CF_COSINE', 'USER_CF', 'COSINE', 21, 0.0500, TRUE, u.id
+SELECT 'USER_CF_COSINE', 'USER_CF', 'COSINE', 14, 0.0500, TRUE, u.id
 FROM users u
 WHERE u.username = 'sysadmin'
   AND NOT EXISTS (SELECT 1 FROM recommender_models WHERE model_code = 'USER_CF_COSINE');
@@ -27,7 +27,7 @@ INSERT INTO recommender_models (
     active,
     created_by
 )
-SELECT 'USER_CF_JACCARD', 'USER_CF', 'JACCARD', 21, 0.0500, FALSE, u.id
+SELECT 'USER_CF_JACCARD', 'USER_CF', 'JACCARD', 14, 0.0500, FALSE, u.id
 FROM users u
 WHERE u.username = 'sysadmin'
   AND NOT EXISTS (SELECT 1 FROM recommender_models WHERE model_code = 'USER_CF_JACCARD');
@@ -41,7 +41,7 @@ INSERT INTO recommender_models (
     active,
     created_by
 )
-SELECT 'USER_CF_ADJUSTED', 'USER_CF', 'ADJUSTED_COSINE', 21, 0.0500, FALSE, u.id
+SELECT 'USER_CF_ADJUSTED', 'USER_CF', 'ADJUSTED_COSINE', 14, 0.0500, FALSE, u.id
 FROM users u
 WHERE u.username = 'sysadmin'
   AND NOT EXISTS (SELECT 1 FROM recommender_models WHERE model_code = 'USER_CF_ADJUSTED');
@@ -55,7 +55,7 @@ INSERT INTO recommender_models (
     active,
     created_by
 )
-SELECT 'ITEM_CF_COSINE', 'ITEM_CF', 'COSINE', 21, 0.0500, FALSE, u.id
+SELECT 'ITEM_CF_COSINE', 'ITEM_CF', 'COSINE', 14, 0.0500, FALSE, u.id
 FROM users u
 WHERE u.username = 'sysadmin'
   AND NOT EXISTS (SELECT 1 FROM recommender_models WHERE model_code = 'ITEM_CF_COSINE');
@@ -69,7 +69,7 @@ INSERT INTO recommender_models (
     active,
     created_by
 )
-SELECT 'ITEM_CF_JACCARD', 'ITEM_CF', 'JACCARD', 21, 0.0500, FALSE, u.id
+SELECT 'ITEM_CF_JACCARD', 'ITEM_CF', 'JACCARD', 14, 0.0500, FALSE, u.id
 FROM users u
 WHERE u.username = 'sysadmin'
   AND NOT EXISTS (SELECT 1 FROM recommender_models WHERE model_code = 'ITEM_CF_JACCARD');
@@ -83,7 +83,7 @@ INSERT INTO recommender_models (
     active,
     created_by
 )
-SELECT 'ITEM_CF_ADJUSTED', 'ITEM_CF', 'ADJUSTED_COSINE', 21, 0.0500, FALSE, u.id
+SELECT 'ITEM_CF_ADJUSTED', 'ITEM_CF', 'ADJUSTED_COSINE', 14, 0.0500, FALSE, u.id
 FROM users u
 WHERE u.username = 'sysadmin'
   AND NOT EXISTS (SELECT 1 FROM recommender_models WHERE model_code = 'ITEM_CF_ADJUSTED');

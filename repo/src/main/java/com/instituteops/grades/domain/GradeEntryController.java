@@ -23,9 +23,11 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class GradeEntryController {
 
     private final GradeEntryService gradeEntryService;
+    private final GradeAuthorizationService gradeAuthorizationService;
 
-    public GradeEntryController(GradeEntryService gradeEntryService) {
+    public GradeEntryController(GradeEntryService gradeEntryService, GradeAuthorizationService gradeAuthorizationService) {
         this.gradeEntryService = gradeEntryService;
+        this.gradeAuthorizationService = gradeAuthorizationService;
     }
 
     @GetMapping("/instructor/grades")
@@ -36,7 +38,7 @@ public class GradeEntryController {
 
     @PostMapping("/instructor/grades")
     public String appendEntry(Authentication authentication, @ModelAttribute @Valid GradeFormRequest form) {
-        gradeEntryService.assertCanManageGradeEntry(authentication, form.studentId(), form.classId());
+        gradeAuthorizationService.assertCanManageGradeEntry(authentication, form.studentId(), form.classId());
         gradeEntryService.appendLedgerEntry(toRequest(form));
         return "redirect:/instructor/grades";
     }
@@ -44,14 +46,14 @@ public class GradeEntryController {
     @ResponseBody
     @PostMapping("/api/grades/preview")
     public GradeEntryService.GradeImpact preview(Authentication authentication, @RequestBody @Valid GradeApiRequest apiRequest) {
-        gradeEntryService.assertCanManageGradeEntry(authentication, apiRequest.studentId(), apiRequest.classId());
+        gradeAuthorizationService.assertCanManageGradeEntry(authentication, apiRequest.studentId(), apiRequest.classId());
         return gradeEntryService.preview(toRequest(apiRequest));
     }
 
     @ResponseBody
     @PostMapping("/api/grades/ledger")
     public ResponseEntity<GradeEntryService.GradeImpact> appendFromApi(Authentication authentication, @RequestBody @Valid GradeApiRequest apiRequest) {
-        gradeEntryService.assertCanManageGradeEntry(authentication, apiRequest.studentId(), apiRequest.classId());
+        gradeAuthorizationService.assertCanManageGradeEntry(authentication, apiRequest.studentId(), apiRequest.classId());
         gradeEntryService.appendLedgerEntry(toRequest(apiRequest));
         return ResponseEntity.ok(gradeEntryService.preview(toRequest(apiRequest)));
     }
@@ -59,7 +61,7 @@ public class GradeEntryController {
     @ResponseBody
     @PostMapping("/api/grades/recompute")
     public ResponseEntity<GradeEntryService.RecalculationResult> recompute(Authentication authentication, @RequestBody @Valid RecomputeApiRequest request) {
-        gradeEntryService.assertCanManageGradeEntry(authentication, request.studentId(), request.classId());
+        gradeAuthorizationService.assertCanManageGradeEntry(authentication, request.studentId(), request.classId());
         return ResponseEntity.ok(gradeEntryService.recomputeStudentClass(request.studentId(), request.classId(), request.reasonCode()));
     }
 
