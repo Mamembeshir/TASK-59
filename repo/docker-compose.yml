@@ -62,7 +62,7 @@ services:
     volumes:
       - ./:/workspace
       - maven_cache:/root/.m2
-    command: ./mvnw -B verify -Pintegration-tests
+    command: ./run-test.sh
 
 volumes:
   mysql_data:
