@@ -130,7 +130,7 @@ class GradeLedgerEntryEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "student_id")
+    @Column(name = "student_id", nullable = false)
     private Long studentId;
 
     @Column(name = "class_id", nullable = false)

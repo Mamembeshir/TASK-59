@@ -163,6 +163,9 @@ public class RequestAuditFilter extends OncePerRequestFilter {
         if (path.startsWith("/api/inventory")) {
             return "INVENTORY_READ";
         }
+        if (path.startsWith("/api/grades")) {
+            return "GRADES_READ";
+        }
         return null;
     }
 

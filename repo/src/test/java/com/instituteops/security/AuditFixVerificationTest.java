@@ -365,6 +365,55 @@ class AuditFixVerificationTest {
         org.assertj.core.api.Assertions.assertThat(count).isEqualTo(1);
     }
 
+    // ===== Store least-privilege (Fix 1) =====
+
+    @Test
+    @WithMockUser(username = "store", roles = "STORE_MANAGER")
+    void storeManager_cannotAccessStudentStorePage() throws Exception {
+        mockMvc.perform(get("/store/student"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "store", roles = "STORE_MANAGER")
+    void storeManager_cannotPlaceStudentOrder() throws Exception {
+        mockMvc.perform(post("/store/student/order")
+                .param("campaignId", "1")
+                .param("quantity", "1")
+                .with(csrf()))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "store", roles = "STORE_MANAGER")
+    void storeManager_cannotCallOrderApi() throws Exception {
+        mockMvc.perform(post("/api/store/order")
+                .contentType("application/json")
+                .content("{\"campaignId\":1,\"quantity\":1}")
+                .with(csrf()))
+            .andExpect(status().isForbidden());
+    }
+
+    // ===== Attachment metadata redaction (Fix 2) =====
+
+    @Test
+    @WithMockUser(username = "sysadmin", roles = "SYSTEM_ADMIN")
+    void timelineApi_doesNotExposeAttachmentStorageMetadata() throws Exception {
+        Long userId = jdbcTemplate.queryForObject("SELECT id FROM users WHERE username = 'sysadmin'", Long.class);
+        jdbcTemplate.update(
+            "INSERT INTO homework_attachments (student_id, original_file_name, stored_file_name, mime_type, file_size_bytes, sha256_checksum, upload_path, uploaded_by, uploaded_at) "
+                + "VALUES (?, 'essay.pdf', 'internal-uuid.pdf', 'application/pdf', 2048, ?, '/data/uploads/internal-uuid.pdf', ?, CURRENT_TIMESTAMP())",
+            student1Id, "c".repeat(64), userId);
+
+        mockMvc.perform(get("/api/students/{id}/timeline", student1Id))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.attachments[0].originalFileName").value("essay.pdf"))
+            .andExpect(jsonPath("$.attachments[0].mimeType").value("application/pdf"))
+            .andExpect(jsonPath("$.attachments[0].storedFileName").doesNotExist())
+            .andExpect(jsonPath("$.attachments[0].uploadPath").doesNotExist())
+            .andExpect(jsonPath("$.attachments[0].uploadedBy").doesNotExist());
+    }
+
     // ===== Helpers =====
 
     private void seedTestUsers() {
@@ -373,6 +422,7 @@ class AuditFixVerificationTest {
             {"registrar", "Registrar Clerk"},
             {"instructor", "Instructor"},
             {"approver", "Procurement Approver"},
+            {"store", "Store Manager"},
             {"student1", "Student User"}
         }) {
             jdbcTemplate.update(

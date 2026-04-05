@@ -324,7 +324,7 @@ public class GovernanceService {
                         }
                         jdbcTemplate.update("DELETE FROM enrollments WHERE student_id = ?", sid);
                     }
-                    jdbcTemplate.update("UPDATE grade_ledger_entries SET student_id = NULL WHERE student_id = ?", sid);
+                    // Grade ledger entries preserved via ON DELETE SET NULL FK cascade
                     studentProfileRepository.delete(student);
                 });
                 purged++;

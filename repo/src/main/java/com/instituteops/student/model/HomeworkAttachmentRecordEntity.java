@@ -1,5 +1,6 @@
 package com.instituteops.student.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -88,6 +89,7 @@ public class HomeworkAttachmentRecordEntity {
         this.originalFileName = originalFileName;
     }
 
+    @JsonIgnore
     public String getStoredFileName() {
         return storedFileName;
     }
@@ -120,6 +122,7 @@ public class HomeworkAttachmentRecordEntity {
         this.sha256Checksum = sha256Checksum;
     }
 
+    @JsonIgnore
     public String getUploadPath() {
         return uploadPath;
     }
@@ -128,6 +131,7 @@ public class HomeworkAttachmentRecordEntity {
         this.uploadPath = uploadPath;
     }
 
+    @JsonIgnore
     public Long getUploadedBy() {
         return uploadedBy;
     }
