@@ -279,6 +279,92 @@ class AuditFixVerificationTest {
             .andExpect(status().isOk());
     }
 
+    // ===== Timeline API sensitive-field redaction (Fix 1) =====
+
+    @Test
+    @WithMockUser(username = "sysadmin", roles = "SYSTEM_ADMIN")
+    void timelineApi_doesNotExposeRawContactFields() throws Exception {
+        mockMvc.perform(get("/api/students/{id}/timeline", student1Id))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.student.contactEmail").doesNotExist())
+            .andExpect(jsonPath("$.student.contactPhone").doesNotExist())
+            .andExpect(jsonPath("$.student.contactAddress").doesNotExist())
+            .andExpect(jsonPath("$.student.emergencyContact").doesNotExist())
+            .andExpect(jsonPath("$.contact").exists());
+    }
+
+    @Test
+    @WithMockUser(username = "sysadmin", roles = "SYSTEM_ADMIN")
+    void timelineApi_includesContactViewObject() throws Exception {
+        mockMvc.perform(get("/api/students/{id}/timeline", student1Id))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contact").exists())
+            .andExpect(jsonPath("$.student.id").exists())
+            .andExpect(jsonPath("$.student.firstName").value("Alice"));
+    }
+
+    // ===== Procurement receive validation (Fix 3) =====
+
+    @Test
+    @WithMockUser(username = "approver", roles = "PROCUREMENT_APPROVER")
+    void receive_rejectsNegativeAcceptedQty() throws Exception {
+        mockMvc.perform(post("/procurement/receive")
+                .param("purchaseOrderId", "1")
+                .param("purchaseOrderLineId", "1")
+                .param("batchNo", "NEG-BATCH")
+                .param("acceptedQty", "-1.000")
+                .param("rejectedQty", "0.000")
+                .with(csrf()))
+            .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @WithMockUser(username = "approver", roles = "PROCUREMENT_APPROVER")
+    void receive_rejectsNegativeRejectedQty() throws Exception {
+        mockMvc.perform(post("/procurement/receive")
+                .param("purchaseOrderId", "1")
+                .param("purchaseOrderLineId", "1")
+                .param("batchNo", "NEG-BATCH")
+                .param("acceptedQty", "1.000")
+                .param("rejectedQty", "-2.000")
+                .with(csrf()))
+            .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @WithMockUser(username = "approver", roles = "PROCUREMENT_APPROVER")
+    void receive_rejectsZeroTotal() throws Exception {
+        mockMvc.perform(post("/procurement/receive")
+                .param("purchaseOrderId", "1")
+                .param("purchaseOrderLineId", "1")
+                .param("batchNo", "ZERO-BATCH")
+                .param("acceptedQty", "0.000")
+                .param("rejectedQty", "0.000")
+                .with(csrf()))
+            .andExpect(status().is4xxClientError());
+    }
+
+    // ===== Supplier contact fields (Fix 5) =====
+
+    @Test
+    @WithMockUser(username = "approver", roles = "PROCUREMENT_APPROVER")
+    void createSupplier_withContactFields() throws Exception {
+        mockMvc.perform(post("/procurement/supplier")
+                .param("supplierCode", "SUP-CONTACT-TEST")
+                .param("supplierName", "Contact Test Supplier")
+                .param("contactName", "John Doe")
+                .param("contactPhone", "555-1234")
+                .param("contactEmail", "john@supplier.test")
+                .param("address", "123 Supply St")
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection());
+
+        Integer count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM suppliers WHERE supplier_code = 'SUP-CONTACT-TEST'",
+            Integer.class);
+        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(1);
+    }
+
     // ===== Helpers =====
 
     private void seedTestUsers() {

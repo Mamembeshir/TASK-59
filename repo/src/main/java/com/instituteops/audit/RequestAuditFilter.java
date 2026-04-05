@@ -86,6 +86,14 @@ public class RequestAuditFilter extends OncePerRequestFilter {
                 }
             }
 
+            if ("GET".equalsIgnoreCase(request.getMethod())) {
+                String sensitiveAccessType = inferSensitiveReadAccessType(path);
+                if (sensitiveAccessType != null) {
+                    auditLogService.logDataAccess(actorUserId, entityType != null ? entityType : sensitiveAccessType,
+                        entityId == null ? 0L : entityId, sensitiveAccessType, action, requestId);
+                }
+            }
+
             org.slf4j.MDC.remove("traceId");
         }
     }
@@ -138,6 +146,22 @@ public class RequestAuditFilter extends OncePerRequestFilter {
         }
         if (path.contains("/consistency") || path.contains("/duplicates")) {
             return "GOVERNANCE_SCAN";
+        }
+        return null;
+    }
+
+    private static String inferSensitiveReadAccessType(String path) {
+        if (path.startsWith("/procurement") && path.contains("/")) {
+            return "PROCUREMENT_READ";
+        }
+        if (path.startsWith("/api/procurement")) {
+            return "PROCUREMENT_READ";
+        }
+        if (path.startsWith("/inventory") && path.contains("/")) {
+            return "INVENTORY_READ";
+        }
+        if (path.startsWith("/api/inventory")) {
+            return "INVENTORY_READ";
         }
         return null;
     }

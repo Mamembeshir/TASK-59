@@ -92,7 +92,8 @@ public class ProcurementService {
     }
 
     @Transactional
-    public SupplierEntity createSupplier(String supplierCode, String supplierName, String contactName) {
+    public SupplierEntity createSupplier(String supplierCode, String supplierName, String contactName,
+                                         String contactPhone, String contactEmail, String address) {
         if (!StringUtils.hasText(supplierCode) || !StringUtils.hasText(supplierName)) {
             throw new IllegalArgumentException("supplierCode and supplierName are required");
         }
@@ -100,6 +101,9 @@ public class ProcurementService {
         supplier.setSupplierCode(supplierCode.trim().toUpperCase(Locale.ROOT));
         supplier.setSupplierName(supplierName.trim());
         supplier.setContactName(contactName);
+        supplier.setContactPhone(contactPhone);
+        supplier.setContactEmail(contactEmail);
+        supplier.setAddress(address);
         supplier.setActive(true);
         return supplierRepository.save(supplier);
     }
@@ -261,8 +265,21 @@ public class ProcurementService {
             if (!poLine.getPurchaseOrderId().equals(po.getId())) {
                 throw new IllegalArgumentException("PO line does not belong to selected PO");
             }
-            BigDecimal accepted = line.acceptedQty();
+            BigDecimal accepted = line.acceptedQty() == null ? BigDecimal.ZERO : line.acceptedQty();
             BigDecimal rejected = line.rejectedQty() == null ? BigDecimal.ZERO : line.rejectedQty();
+            if (accepted.compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("Accepted quantity cannot be negative");
+            }
+            if (rejected.compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("Rejected quantity cannot be negative");
+            }
+            if (accepted.add(rejected).compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Total received quantity must be greater than zero");
+            }
+            BigDecimal cumulativeReceived = poLine.getReceivedQty().add(accepted);
+            if (cumulativeReceived.compareTo(poLine.getOrderedQty()) > 0) {
+                throw new IllegalStateException("Cumulative received quantity exceeds ordered quantity for PO line " + poLine.getId());
+            }
             BigDecimal receivedQty = accepted.add(rejected);
 
             GoodsReceiptLineEntity grLine = new GoodsReceiptLineEntity();

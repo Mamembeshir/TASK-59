@@ -324,7 +324,7 @@ public class GovernanceService {
                         }
                         jdbcTemplate.update("DELETE FROM enrollments WHERE student_id = ?", sid);
                     }
-                    jdbcTemplate.update("DELETE FROM grade_ledger_entries WHERE student_id = ?", sid);
+                    jdbcTemplate.update("UPDATE grade_ledger_entries SET student_id = NULL WHERE student_id = ?", sid);
                     studentProfileRepository.delete(student);
                 });
                 purged++;

@@ -39,8 +39,15 @@ public class ProcurementController {
     }
 
     @PostMapping("/procurement/supplier")
-    public String supplier(@RequestParam String supplierCode, @RequestParam String supplierName, @RequestParam(required = false) String contactName) {
-        procurementService.createSupplier(supplierCode, supplierName, contactName);
+    public String supplier(
+        @RequestParam String supplierCode,
+        @RequestParam String supplierName,
+        @RequestParam(required = false) String contactName,
+        @RequestParam(required = false) String contactPhone,
+        @RequestParam(required = false) String contactEmail,
+        @RequestParam(required = false) String address
+    ) {
+        procurementService.createSupplier(supplierCode, supplierName, contactName, contactPhone, contactEmail, address);
         return "redirect:/procurement";
     }
 

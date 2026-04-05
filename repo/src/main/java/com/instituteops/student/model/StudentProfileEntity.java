@@ -1,5 +1,6 @@
 package com.instituteops.student.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.instituteops.shared.crypto.AesStringAttributeConverter;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -117,6 +118,7 @@ public class StudentProfileEntity {
         this.status = status;
     }
 
+    @JsonIgnore
     public String getContactEmail() {
         return contactEmail;
     }
@@ -125,6 +127,7 @@ public class StudentProfileEntity {
         this.contactEmail = contactEmail;
     }
 
+    @JsonIgnore
     public String getContactPhone() {
         return contactPhone;
     }
@@ -133,6 +136,7 @@ public class StudentProfileEntity {
         this.contactPhone = contactPhone;
     }
 
+    @JsonIgnore
     public String getContactAddress() {
         return contactAddress;
     }
@@ -157,6 +161,7 @@ public class StudentProfileEntity {
         this.maskedPhone = maskedPhone;
     }
 
+    @JsonIgnore
     public String getEmergencyContact() {
         return emergencyContact;
     }

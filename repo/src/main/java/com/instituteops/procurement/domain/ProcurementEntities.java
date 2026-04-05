@@ -1,6 +1,8 @@
 package com.instituteops.procurement.domain;
 
+import com.instituteops.shared.crypto.AesStringAttributeConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,6 +27,18 @@ class SupplierEntity {
 
     @Column(name = "contact_name")
     private String contactName;
+
+    @Convert(converter = AesStringAttributeConverter.class)
+    @Column(name = "contact_phone_encrypted")
+    private String contactPhone;
+
+    @Convert(converter = AesStringAttributeConverter.class)
+    @Column(name = "contact_email_encrypted")
+    private String contactEmail;
+
+    @Convert(converter = AesStringAttributeConverter.class)
+    @Column(name = "address_encrypted")
+    private String address;
 
     @Column(name = "active", nullable = false)
     private boolean active;
@@ -55,6 +69,30 @@ class SupplierEntity {
 
     public void setContactName(String contactName) {
         this.contactName = contactName;
+    }
+
+    public String getContactPhone() {
+        return contactPhone;
+    }
+
+    public void setContactPhone(String contactPhone) {
+        this.contactPhone = contactPhone;
+    }
+
+    public String getContactEmail() {
+        return contactEmail;
+    }
+
+    public void setContactEmail(String contactEmail) {
+        this.contactEmail = contactEmail;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 
     public boolean isActive() {
