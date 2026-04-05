@@ -603,7 +603,8 @@ public class RecommenderService {
     }
 
     private Long currentOperatorId() {
-        return userIdentityService.resolveCurrentUserId().orElseGet(() -> userRepository.findIdByUsername("sysadmin").orElse(1L));
+        return userIdentityService.resolveCurrentUserId()
+            .orElseThrow(() -> new IllegalStateException("Authenticated user context is required but not available"));
     }
 
     private BigDecimal toBigDecimal(Object value) {

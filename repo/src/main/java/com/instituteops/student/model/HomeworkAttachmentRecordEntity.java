@@ -6,10 +6,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "homework_attachments")
+@Table(name = "homework_attachments", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_homework_student_checksum", columnNames = {"student_id", "sha256_checksum"})
+})
 public class HomeworkAttachmentRecordEntity {
 
     @Id

@@ -419,7 +419,8 @@ public class ProcurementService {
     }
 
     private Long currentUserId() {
-        return userIdentityService.resolveCurrentUserId().orElseGet(() -> userRepository.findIdByUsername("approver").orElse(1L));
+        return userIdentityService.resolveCurrentUserId()
+            .orElseThrow(() -> new IllegalStateException("Authenticated user context is required but not available"));
     }
 
     public record ReceiveRequest(Long purchaseOrderId, String note, List<ReceiveLine> lines) {

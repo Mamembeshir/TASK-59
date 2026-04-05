@@ -392,7 +392,8 @@ public class InventoryModuleService {
     }
 
     private Long currentUserId() {
-        return userIdentityService.resolveCurrentUserId().orElseGet(() -> userRepository.findIdByUsername("inventory").orElse(1L));
+        return userIdentityService.resolveCurrentUserId()
+            .orElseThrow(() -> new IllegalStateException("Authenticated user context is required but not available"));
     }
 
     public record ReceiveBatchRequest(Long ingredientId, String batchNo, BigDecimal quantity, Long unitId, BigDecimal unitCost, LocalDate expiresAt) {

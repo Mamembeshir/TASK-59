@@ -60,6 +60,7 @@ class SecurityIntegrationTest {
         jdbcTemplate.update("DELETE FROM enrollments");
         studentProfileLookupRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM sync_config");
+        seedTestUsers();
 
         StudentProfileEntity student1 = new StudentProfileEntity();
         student1.setStudentNo("student1");
@@ -944,8 +945,7 @@ class SecurityIntegrationTest {
         jdbcTemplate.update("DELETE FROM spu_catalog WHERE id BETWEEN 9100 AND 9199");
 
         jdbcTemplate.update(
-            "MERGE INTO users (id, username, password_hash, display_name, active) KEY(id) VALUES (?, ?, ?, ?, ?)",
-            1L,
+            "MERGE INTO users (username, password_hash, display_name, active) KEY(username) VALUES (?, ?, ?, ?)",
             "store",
             "hashed",
             "Store Operator",
@@ -1215,6 +1215,22 @@ class SecurityIntegrationTest {
         jdbcTemplate.execute("ALTER TABLE inventory_batches ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP");
         jdbcTemplate.execute("ALTER TABLE inventory_transactions ADD COLUMN IF NOT EXISTS reference_type VARCHAR(64)");
         jdbcTemplate.execute("ALTER TABLE inventory_transactions ADD COLUMN IF NOT EXISTS reference_id BIGINT");
+    }
+
+    private void seedTestUsers() {
+        for (String[] user : new String[][]{
+            {"sysadmin", "System Admin"},
+            {"registrar", "Registrar Clerk"},
+            {"approver", "Procurement Approver"},
+            {"inventory", "Inventory Manager"},
+            {"store", "Store Manager"},
+            {"student1", "Student User"}
+        }) {
+            jdbcTemplate.update(
+                "MERGE INTO users (username, password_hash, display_name, active) KEY(username) VALUES (?, ?, ?, ?)",
+                user[0], "hashed", user[1], true
+            );
+        }
     }
 
     private void seedInstructorAssignmentForStudent(Long studentId) {

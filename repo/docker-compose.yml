@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: instituteops
+      # Local QA/dev defaults only. Override for production deployments.
       MYSQL_USER: instituteops
       MYSQL_PASSWORD: instituteops
       MYSQL_ROOT_PASSWORD: root
@@ -37,6 +38,7 @@ services:
       SPRING_DATASOURCE_USERNAME: instituteops
       SPRING_DATASOURCE_PASSWORD: instituteops
       APP_UPLOAD_BASE_PATH: /uploads
+      # Local QA/dev default key. Override with a securely generated key for production.
       APP_ENCRYPTION_AES_KEY_BASE64: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
     ports:
       - "8080:8080"

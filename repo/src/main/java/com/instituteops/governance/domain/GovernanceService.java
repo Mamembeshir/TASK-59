@@ -489,7 +489,8 @@ public class GovernanceService {
     }
 
     private Long currentUserId() {
-        return userIdentityService.resolveCurrentUserId().orElseGet(() -> userRepository.findIdByUsername("sysadmin").orElse(1L));
+        return userIdentityService.resolveCurrentUserId()
+            .orElseThrow(() -> new IllegalStateException("Authenticated user context is required but not available"));
     }
 
     private static boolean hasAnyRole(Authentication authentication, String... roles) {

@@ -118,9 +118,19 @@ public class StudentModuleService {
     }
 
     public List<StudentProfileEntity> searchStudentsForPrincipal(Authentication authentication, String query) {
-        if (!isStudentPrincipal(authentication)) {
+        if (hasAnyRole(authentication, "ROLE_SYSTEM_ADMIN", "ROLE_REGISTRAR_FINANCE_CLERK")) {
             return searchStudents(query);
         }
+        if (isStudentPrincipal(authentication)) {
+            return searchStudentsForStudent(authentication, query);
+        }
+        if (hasAnyRole(authentication, "ROLE_INSTRUCTOR")) {
+            return searchStudentsForInstructor(authentication, query);
+        }
+        return List.of();
+    }
+
+    private List<StudentProfileEntity> searchStudentsForStudent(Authentication authentication, String query) {
         StudentProfileEntity mine = resolveStudentForPrincipal(authentication);
         if (!StringUtils.hasText(query)) {
             return List.of(mine);
@@ -131,6 +141,37 @@ public class StudentModuleService {
             return List.of(mine);
         }
         return List.of();
+    }
+
+    private List<StudentProfileEntity> searchStudentsForInstructor(Authentication authentication, String query) {
+        Long instructorUserId = userRepository.findIdByUsername(authentication.getName())
+            .orElseThrow(() -> new AccessDeniedException("Instructor account is not linked to an active user"));
+        List<Long> assignedStudentIds = jdbcTemplate.queryForList(
+            """
+                SELECT DISTINCT e.student_id
+                FROM enrollments e
+                JOIN classes c ON c.id = e.class_id
+                WHERE c.instructor_user_id = ?
+                  AND e.deleted_at IS NULL
+                  AND e.enrollment_status IN ('ENROLLED', 'WAITLISTED', 'COMPLETED')
+            """,
+            Long.class,
+            instructorUserId
+        );
+        if (assignedStudentIds.isEmpty()) {
+            return List.of();
+        }
+        List<StudentProfileEntity> allAssigned = studentProfileRepository.findAllById(assignedStudentIds).stream()
+            .filter(s -> s.getDeletedAt() == null)
+            .sorted(Comparator.comparing(StudentProfileEntity::getLastName).thenComparing(StudentProfileEntity::getFirstName))
+            .toList();
+        if (!StringUtils.hasText(query)) {
+            return allAssigned;
+        }
+        String q = query.trim().toLowerCase(Locale.ROOT);
+        return allAssigned.stream()
+            .filter(s -> s.getFirstName().toLowerCase(Locale.ROOT).contains(q) || s.getLastName().toLowerCase(Locale.ROOT).contains(q))
+            .toList();
     }
 
     @Transactional
@@ -450,7 +491,8 @@ public class StudentModuleService {
     }
 
     private Long currentUserId() {
-        return userIdentityService.resolveCurrentUserId().orElseGet(() -> userRepository.findIdByUsername("sysadmin").orElse(1L));
+        return userIdentityService.resolveCurrentUserId()
+            .orElseThrow(() -> new IllegalStateException("Authenticated user context is required but not available"));
     }
 
     private StudentProfileEntity resolveStudentForPrincipal(Authentication authentication) {

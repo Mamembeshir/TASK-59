@@ -558,7 +558,8 @@ public class CatalogService {
     }
 
     private Long currentOperatorId() {
-        return userIdentityService.resolveCurrentUserId().orElseGet(() -> userRepository.findIdByUsername("store").orElse(1L));
+        return userIdentityService.resolveCurrentUserId()
+            .orElseThrow(() -> new IllegalStateException("Authenticated user context is required but not available"));
     }
 
     private Long currentStudentId() {

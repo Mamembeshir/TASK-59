@@ -40,7 +40,8 @@ public class RequestAuditFilter extends OncePerRequestFilter {
         String requestId = Optional.ofNullable(request.getHeader("X-Request-ID"))
             .filter(v -> !v.isBlank())
             .orElse(UUID.randomUUID().toString());
-        request.setAttribute("requestId", requestId);
+        request.setAttribute("traceId", requestId);
+        org.slf4j.MDC.put("traceId", requestId);
 
         try {
             filterChain.doFilter(request, response);
@@ -77,6 +78,15 @@ public class RequestAuditFilter extends OncePerRequestFilter {
                     : "MASKED_READ";
                 auditLogService.logDataAccess(actorUserId, entityType, entityId == null ? 0L : entityId, accessType, action, requestId);
             }
+
+            if (path.startsWith("/api/governance/")) {
+                String governanceAccessType = inferGovernanceAccessType(path, request.getMethod());
+                if (governanceAccessType != null) {
+                    auditLogService.logDataAccess(actorUserId, "GOVERNANCE", entityId == null ? 0L : entityId, governanceAccessType, action, requestId);
+                }
+            }
+
+            org.slf4j.MDC.remove("traceId");
         }
     }
 
@@ -103,6 +113,31 @@ public class RequestAuditFilter extends OncePerRequestFilter {
         }
         if (path.startsWith("/store")) {
             return "GROUP_BUY";
+        }
+        return null;
+    }
+
+    private static String inferGovernanceAccessType(String path, String method) {
+        if (path.contains("/students/export")) {
+            return "GOVERNANCE_EXPORT";
+        }
+        if (path.contains("/students/import")) {
+            return "GOVERNANCE_IMPORT";
+        }
+        if (path.contains("/history")) {
+            return "GOVERNANCE_HISTORY_READ";
+        }
+        if (path.contains("/recycle-bin/purge")) {
+            return "GOVERNANCE_PURGE";
+        }
+        if (path.contains("/recycle-bin") && "POST".equalsIgnoreCase(method) && path.contains("/restore")) {
+            return "GOVERNANCE_RESTORE";
+        }
+        if (path.contains("/recycle-bin") && "GET".equalsIgnoreCase(method)) {
+            return "GOVERNANCE_RECYCLE_READ";
+        }
+        if (path.contains("/consistency") || path.contains("/duplicates")) {
+            return "GOVERNANCE_SCAN";
         }
         return null;
     }
