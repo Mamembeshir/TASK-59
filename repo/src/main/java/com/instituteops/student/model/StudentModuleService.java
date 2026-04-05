@@ -245,6 +245,10 @@ public class StudentModuleService {
         if (!PAYMENT_METHODS.contains(paymentMethod)) {
             throw new IllegalArgumentException("Unsupported payment method");
         }
+        if (request.enrollmentId() != null) {
+            enrollmentRecordRepository.findByIdAndStudentId(request.enrollmentId(), studentId)
+                .orElseThrow(() -> new IllegalArgumentException("Enrollment does not belong to this student"));
+        }
         PaymentRecordEntity entity = new PaymentRecordEntity();
         entity.setStudentId(studentId);
         entity.setEnrollmentId(request.enrollmentId());
@@ -287,6 +291,10 @@ public class StudentModuleService {
         if (!COMMENT_VISIBILITY.contains(visibility)) {
             throw new IllegalArgumentException("Unsupported comment visibility");
         }
+        if (request.classSessionId() != null && request.classId() != null) {
+            classSessionRefRepository.findByIdAndClassId(request.classSessionId(), request.classId())
+                .orElseThrow(() -> new IllegalArgumentException("Class session does not belong to specified class"));
+        }
         InstructorCommentRecordEntity entity = new InstructorCommentRecordEntity();
         entity.setStudentId(studentId);
         entity.setClassId(request.classId());
@@ -301,6 +309,10 @@ public class StudentModuleService {
     @Transactional
     public HomeworkAttachmentRecordEntity uploadHomework(Long studentId, HomeworkUploadRequest request, MultipartFile file) {
         findActiveStudent(studentId);
+        if (request.classSessionId() != null && request.classId() != null) {
+            classSessionRefRepository.findByIdAndClassId(request.classSessionId(), request.classId())
+                .orElseThrow(() -> new IllegalArgumentException("Class session does not belong to specified class"));
+        }
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Homework file is required");
         }

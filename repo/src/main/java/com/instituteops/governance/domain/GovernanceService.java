@@ -172,14 +172,20 @@ public class GovernanceService {
                     existing.setLastName(lastName);
                     existing.setPreferredName(nullable(readField(record, schema.preferredName())));
                     existing.setDateOfBirth(dob);
-                    String email = nullable(readField(record, schema.contactEmail()));
-                    String phone = nullable(readField(record, schema.contactPhone()));
-                    existing.setContactEmail(email);
-                    existing.setContactPhone(phone);
-                    existing.setContactAddress(nullable(readField(record, schema.contactAddress())));
-                    existing.setEmergencyContact(nullable(readField(record, schema.emergencyContact())));
-                    existing.setMaskedEmail(maskEmail(email));
-                    existing.setMaskedPhone(maskPhone(phone));
+                    if (schema.legacy()) {
+                        // Legacy format: masked values go to display columns only, never to authoritative encrypted fields
+                        existing.setMaskedEmail(nullable(readField(record, schema.contactEmail())));
+                        existing.setMaskedPhone(nullable(readField(record, schema.contactPhone())));
+                    } else {
+                        String email = nullable(readField(record, schema.contactEmail()));
+                        String phone = nullable(readField(record, schema.contactPhone()));
+                        existing.setContactEmail(email);
+                        existing.setContactPhone(phone);
+                        existing.setContactAddress(nullable(readField(record, schema.contactAddress())));
+                        existing.setEmergencyContact(nullable(readField(record, schema.emergencyContact())));
+                        existing.setMaskedEmail(maskEmail(email));
+                        existing.setMaskedPhone(maskPhone(phone));
+                    }
                     studentProfileRepository.save(existing);
                     governanceAuditService.recordChange(STUDENT_ENTITY, existing.getId(), "UPDATE", before, studentSnapshot(existing), "CSV_IMPORT_UPDATE");
                     updated++;
@@ -191,14 +197,20 @@ public class GovernanceService {
                     createdStudent.setPreferredName(nullable(readField(record, schema.preferredName())));
                     createdStudent.setDateOfBirth(dob);
                     createdStudent.setStatus("ACTIVE");
-                    String newEmail = nullable(readField(record, schema.contactEmail()));
-                    String newPhone = nullable(readField(record, schema.contactPhone()));
-                    createdStudent.setContactEmail(newEmail);
-                    createdStudent.setContactPhone(newPhone);
-                    createdStudent.setContactAddress(nullable(readField(record, schema.contactAddress())));
-                    createdStudent.setEmergencyContact(nullable(readField(record, schema.emergencyContact())));
-                    createdStudent.setMaskedEmail(maskEmail(newEmail));
-                    createdStudent.setMaskedPhone(maskPhone(newPhone));
+                    if (schema.legacy()) {
+                        // Legacy format: masked values go to display columns only
+                        createdStudent.setMaskedEmail(nullable(readField(record, schema.contactEmail())));
+                        createdStudent.setMaskedPhone(nullable(readField(record, schema.contactPhone())));
+                    } else {
+                        String newEmail = nullable(readField(record, schema.contactEmail()));
+                        String newPhone = nullable(readField(record, schema.contactPhone()));
+                        createdStudent.setContactEmail(newEmail);
+                        createdStudent.setContactPhone(newPhone);
+                        createdStudent.setContactAddress(nullable(readField(record, schema.contactAddress())));
+                        createdStudent.setEmergencyContact(nullable(readField(record, schema.emergencyContact())));
+                        createdStudent.setMaskedEmail(maskEmail(newEmail));
+                        createdStudent.setMaskedPhone(maskPhone(newPhone));
+                    }
                     studentProfileRepository.save(createdStudent);
                     governanceAuditService.recordChange(STUDENT_ENTITY, createdStudent.getId(), "CREATE", null, studentSnapshot(createdStudent), "CSV_IMPORT_CREATE");
                     created++;
@@ -468,7 +480,8 @@ public class GovernanceService {
                 "contact_email",
                 "contact_phone",
                 "contact_address",
-                "emergency_contact"
+                "emergency_contact",
+                false
             );
         }
         if (headers.containsAll(Arrays.asList(STUDENT_LEGACY_EXPORT_HEADER))) {
@@ -480,8 +493,9 @@ public class GovernanceService {
                 "date_of_birth",
                 "masked_email",
                 "masked_phone",
-                "contact_address",
-                "emergency_contact"
+                null,
+                null,
+                true
             );
         }
         throw new IllegalArgumentException("Unsupported CSV header");
@@ -642,7 +656,8 @@ public class GovernanceService {
         String contactEmail,
         String contactPhone,
         String contactAddress,
-        String emergencyContact
+        String emergencyContact,
+        boolean legacy
     ) {
     }
 }

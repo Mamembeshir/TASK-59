@@ -414,7 +414,111 @@ class AuditFixVerificationTest {
             .andExpect(jsonPath("$.attachments[0].uploadedBy").doesNotExist());
     }
 
+    // ===== Legacy CSV import protection (Fix 1 round 5) =====
+
+    @Test
+    @WithMockUser(username = "registrar", roles = "REGISTRAR_FINANCE_CLERK")
+    void legacyCsvImport_doesNotCorruptAuthoritativeContactFields() throws Exception {
+        // Seed a student with real encrypted email
+        jdbcTemplate.update("UPDATE students SET contact_email_encrypted = NULL, masked_email = 'al***@test.com' WHERE id = ?", student1Id);
+
+        // Import legacy CSV with masked values — should NOT write masked values to encrypted fields
+        String legacyCsv = "student_no,first_name,last_name,preferred_name,date_of_birth,status,masked_email,masked_phone\n"
+            + "audit-s1,Alice,Assigned,,2010-01-01,ACTIVE,al***@test.com,***-***-1234";
+
+        mockMvc.perform(post("/api/governance/students/import")
+                .param("allowUpdate", "true")
+                .contentType("text/plain")
+                .content(legacyCsv)
+                .with(csrf()))
+            .andExpect(status().isOk());
+
+        // Verify encrypted contact field was NOT overwritten with the masked value
+        Object encryptedEmail = jdbcTemplate.queryForObject(
+            "SELECT contact_email_encrypted FROM students WHERE id = ?", Object.class, student1Id);
+        // The encrypted field should still be null (not set to the masked value)
+        org.assertj.core.api.Assertions.assertThat(encryptedEmail).isNull();
+
+        // The masked display field should be updated
+        String maskedEmail = jdbcTemplate.queryForObject(
+            "SELECT masked_email FROM students WHERE id = ?", String.class, student1Id);
+        org.assertj.core.api.Assertions.assertThat(maskedEmail).isEqualTo("al***@test.com");
+    }
+
+    // ===== Relational integrity checks (Fix 2 round 5) =====
+
+    @Test
+    @WithMockUser(username = "registrar", roles = "REGISTRAR_FINANCE_CLERK")
+    void payment_rejectsMismatchedEnrollment() throws Exception {
+        // Create a second student's enrollment
+        Long enrollmentId = seedEnrollmentForStudent(student2Id);
+
+        // Try to link student1's payment to student2's enrollment
+        mockMvc.perform(post("/student/{id}/payments", student1Id)
+                .param("enrollmentId", enrollmentId.toString())
+                .param("paymentMethod", "CASH")
+                .param("amount", "50.00")
+                .with(csrf()))
+            .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @WithMockUser(username = "registrar", roles = "REGISTRAR_FINANCE_CLERK")
+    void comment_rejectsMismatchedClassSession() throws Exception {
+        // Create a session for unassigned class
+        Long sessionId = seedSessionForClass(unassignedClassId);
+
+        // Try to attach a comment with a session that doesn't belong to the specified class
+        mockMvc.perform(post("/student/{id}/comments", student1Id)
+                .param("classId", assignedClassId.toString())
+                .param("classSessionId", sessionId.toString())
+                .param("commentText", "Test comment")
+                .param("visibility", "INTERNAL")
+                .with(csrf()))
+            .andExpect(status().is4xxClientError());
+    }
+
+    // ===== Filter-enabled security tests (Fix 4 round 5) =====
+
+    @Test
+    void unauthenticated_governanceExport_is401or302() throws Exception {
+        mockMvc.perform(get("/api/governance/students/export"))
+            .andExpect(status().is3xxRedirection()); // redirects to login
+    }
+
+    @Test
+    void unauthenticated_studentApi_is401or302() throws Exception {
+        mockMvc.perform(get("/api/students"))
+            .andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    @WithMockUser(username = "registrar", roles = "REGISTRAR_FINANCE_CLERK")
+    void csrf_requiredForStudentMutation() throws Exception {
+        // POST without CSRF should fail
+        mockMvc.perform(post("/student/{id}/status", student1Id)
+                .param("status", "SUSPENDED"))
+            .andExpect(status().isForbidden());
+    }
+
     // ===== Helpers =====
+
+    private Long seedEnrollmentForStudent(Long studentId) {
+        jdbcTemplate.update(
+            "INSERT INTO enrollments (student_id, class_id, enrollment_status, enrolled_at, deleted_at) VALUES (?, ?, 'ENROLLED', CURRENT_TIMESTAMP(), NULL)",
+            studentId, assignedClassId);
+        return jdbcTemplate.queryForObject(
+            "SELECT id FROM enrollments WHERE student_id = ? AND class_id = ? ORDER BY id DESC LIMIT 1",
+            Long.class, studentId, assignedClassId);
+    }
+
+    private Long seedSessionForClass(Long classId) {
+        jdbcTemplate.update(
+            "MERGE INTO class_sessions (class_id, session_no, session_date) KEY(class_id, session_no) VALUES (?, 99, CURRENT_DATE())",
+            classId);
+        return jdbcTemplate.queryForObject(
+            "SELECT id FROM class_sessions WHERE class_id = ? AND session_no = 99", Long.class, classId);
+    }
 
     private void seedTestUsers() {
         for (String[] user : new String[][]{
