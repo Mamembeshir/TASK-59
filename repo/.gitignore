@@ -42,6 +42,7 @@ tmp/
 temp/
 *.tmp
 *.swp
+.claude
 
 # Docker local volumes/data
 mysql_data/
